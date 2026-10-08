@@ -1,12 +1,32 @@
-import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 
-let dbInstance: DatabaseSync | null = null;
+let DatabaseSyncClass: any = null;
+try {
+  // Dynamic require prevents ERR_UNKNOWN_BUILTIN_MODULE during Next.js build page collection
+  // node:sqlite is natively built-in in Node.js 22+
+  const sqliteModule = require("node:sqlite");
+  DatabaseSyncClass = sqliteModule.DatabaseSync;
+} catch (e) {
+  // Safely caught during build collection if builder is on Node < 22
+}
 
-export function getDb(): DatabaseSync {
+let dbInstance: any = null;
+
+export function getDb(): any {
   if (dbInstance) {
     return dbInstance;
+  }
+
+  if (!DatabaseSyncClass) {
+    try {
+      const sqliteModule = require("node:sqlite");
+      DatabaseSyncClass = sqliteModule.DatabaseSync;
+    } catch (e) {
+      throw new Error(
+        "node:sqlite is only available on Node.js 22+. Please set NODE_VERSION=22.12.0 in Render environment variables."
+      );
+    }
   }
 
   const dbDir = path.join(process.cwd(), "data");
@@ -15,7 +35,7 @@ export function getDb(): DatabaseSync {
   }
 
   const dbPath = path.join(dbDir, "purechem.db");
-  const db = new DatabaseSync(dbPath);
+  const db = new DatabaseSyncClass(dbPath);
 
   // Enable WAL mode & foreign keys for high concurrency & integrity
   db.exec("PRAGMA journal_mode = WAL;");
@@ -28,7 +48,7 @@ export function getDb(): DatabaseSync {
   return dbInstance;
 }
 
-function initSchema(db: DatabaseSync) {
+function initSchema(db: any) {
   db.exec(`
     -- Users / Staff table
     CREATE TABLE IF NOT EXISTS users (
