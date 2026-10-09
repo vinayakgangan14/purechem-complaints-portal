@@ -49,6 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       case "customer_service":
         return "/admin/complaints";
       case "quality_manager":
+        return "/admin/resolve";
       case "super_admin":
         return "/admin";
       case "customer":

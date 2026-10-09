@@ -144,6 +144,29 @@ function BatchTraceContent() {
             </button>
           </div>
 
+          {/* Factory QC Test Certificate (if available) */}
+          {data?.qcReport && (
+            <div className="p-4 mx-6 mt-4 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-extrabold text-emerald-900 text-xs flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-emerald-700" /> Factory QC Lab Release Record (Batch: {data.qcReport.batch_number})
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase text-white ${data.qcReport.qc_status === "Passed" ? "bg-emerald-600" : "bg-rose-600"}`}>
+                  QC {data.qcReport.qc_status}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div><span className="text-slate-400 block text-[10px]">Viscosity</span><strong>{data.qcReport.viscosity || "N/A"}</strong></div>
+                <div><span className="text-slate-400 block text-[10px]">Colour</span><strong>{data.qcReport.colour || "N/A"}</strong></div>
+                <div><span className="text-slate-400 block text-[10px]">Solids %</span><strong>{data.qcReport.solids || "N/A"}</strong></div>
+                <div><span className="text-slate-400 block text-[10px]">MFG / EXP</span><strong>{data.qcReport.manufacturing_date || "N/A"} • {data.qcReport.expiry_date || "N/A"}</strong></div>
+              </div>
+              <div className="text-[11px] text-slate-600">
+                Tested by: <strong>{data.qcReport.tested_by}</strong> on {data.qcReport.testing_date} • Obs: {data.qcReport.remarks}
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>

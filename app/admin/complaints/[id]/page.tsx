@@ -65,7 +65,7 @@ export default function AdminComplaintDetailPage() {
   const fetchComplaint = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/complaints/${id}`);
+      const res = await fetch(`/api/complaints/${id}?include_internal=true`);
       const resData = await res.json();
       if (!resData.success) {
         throw new Error(resData.error || "Complaint not found");
@@ -397,15 +397,15 @@ export default function AdminComplaintDetailPage() {
             </div>
           </div>
 
-          {/* Root Cause Analysis & Corrective Actions (CAPA) */}
+          {/* First Information, Immediate Resolution & Suggestions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Root Cause Analysis (RCA)
+                First Information
               </label>
               <textarea
                 rows={3}
-                placeholder="Identified root cause (e.g. storage temperature, formulation variance, packaging leak)..."
+                placeholder="Initial laboratory observations, inspection findings, temperature/viscosity at arrival, defect confirmation..."
                 value={rcaText}
                 onChange={(e) => setRcaText(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-purechem-orange"
@@ -414,11 +414,11 @@ export default function AdminComplaintDetailPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Corrective Action (Immediate)
+                Immediate Resolution
               </label>
               <textarea
                 rows={3}
-                placeholder="Immediate corrective measure applied (e.g. product replacement, parameter adjustment)..."
+                placeholder="Immediate resolution provided to customer (e.g. replaced defective units, dispatched technical engineer)..."
                 value={correctiveAction}
                 onChange={(e) => setCorrectiveAction(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-purechem-orange"
@@ -427,11 +427,11 @@ export default function AdminComplaintDetailPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Preventive Action (Long-Term CAPA)
+                Suggestions
               </label>
               <textarea
                 rows={3}
-                placeholder="Preventive steps to avoid recurrence across batch runs..."
+                placeholder="Quality & operational suggestions to avoid recurrence (e.g. storage recommendation, calibration, supplier spec tweak)..."
                 value={preventiveAction}
                 onChange={(e) => setPreventiveAction(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-purechem-orange"

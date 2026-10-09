@@ -32,12 +32,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     );
 
     // Section 14: Strict separation of internal notes vs customer communication
+    const isStaffRequest =
+      req.nextUrl.searchParams.get("include_internal") === "true" ||
+      req.headers.get("referer")?.includes("/admin") ||
+      (role && role !== "customer");
+
     let timelineQuery = "SELECT * FROM complaint_timeline WHERE complaint_id = ?";
-    if (role === "customer") {
+    if (!isStaffRequest) {
       timelineQuery += " AND is_internal_only = 0";
     }
     timelineQuery += " ORDER BY created_at ASC";
     const timeline = db.prepare(timelineQuery).all(complaint.id);
+
+    // Factory QC Batch Report (if batch_number is present)
+    let qcReport: any = null;
+    if (complaint.batch_number && complaint.batch_number.trim()) {
+      qcReport = db.prepare(
+        "SELECT * FROM qc_batch_reports WHERE batch_number = ? OR batch_number LIKE ?"
+      ).get(complaint.batch_number.trim(), `%${complaint.batch_number.trim()}%`);
+    }
 
     // Attachments
     const attachments = db.prepare("SELECT * FROM attachments WHERE complaint_id = ? ORDER BY created_at DESC").all(complaint.id);
@@ -53,6 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         is_overdue: overdue ? 1 : 0,
       },
       timeline,
+      qc_report: qcReport,
       attachments,
       feedback,
     });

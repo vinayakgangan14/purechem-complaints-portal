@@ -219,6 +219,24 @@ function initSchema(db: any) {
       updated_at TEXT NOT NULL
     );
 
+    -- QC Batch Reports (Daily factory testing log by Quality Executives)
+    CREATE TABLE IF NOT EXISTS qc_batch_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_name TEXT NOT NULL,
+      batch_number TEXT NOT NULL UNIQUE,
+      viscosity TEXT,
+      colour TEXT,
+      solids TEXT,
+      qc_status TEXT NOT NULL DEFAULT 'Passed',
+      manufacturing_date TEXT,
+      expiry_date TEXT,
+      tested_by TEXT NOT NULL DEFAULT 'Dr. Chioma Okonkwo (QC)',
+      testing_date TEXT NOT NULL,
+      remarks TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     -- Indexes for high-speed search and query performance
     CREATE INDEX IF NOT EXISTS idx_complaints_number ON complaints(complaint_number);
     CREATE INDEX IF NOT EXISTS idx_complaints_email ON complaints(customer_email);
@@ -230,6 +248,8 @@ function initSchema(db: any) {
     CREATE INDEX IF NOT EXISTS idx_timeline_complaint ON complaint_timeline(complaint_id);
     CREATE INDEX IF NOT EXISTS idx_attachments_complaint ON attachments(complaint_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_complaint ON notifications(complaint_id);
+    CREATE INDEX IF NOT EXISTS idx_qc_batch ON qc_batch_reports(batch_number);
+    CREATE INDEX IF NOT EXISTS idx_qc_product ON qc_batch_reports(product_name);
   `);
 
   // Auto-seed if tables are empty
@@ -237,6 +257,10 @@ function initSchema(db: any) {
     const prodRow = db.prepare("SELECT COUNT(*) as count FROM products").get() as any;
     if (!prodRow || prodRow.count === 0) {
       seedMasterData(db);
+    }
+    const qcRow = db.prepare("SELECT COUNT(*) as count FROM qc_batch_reports").get() as any;
+    if (!qcRow || qcRow.count === 0) {
+      seedQCData(db);
     }
   } catch (e) {
     console.error("Auto-seeding check failed", e);
@@ -440,4 +464,141 @@ function seedMasterData(db: any) {
     INSERT OR REPLACE INTO feedback (complaint_id, rating, resolution_satisfaction, comments, customer_name, submitted_at)
     VALUES ('CMP-004', 5, 'Yes', 'Exceptional turnaround time by Purechem engineering team. Bottle labeling line reached full target output with zero downtime.', 'Engr. Tunde Williams', ?)
   `).run(t4_end);
+}
+
+function seedQCData(db: any) {
+  const now = new Date().toISOString();
+  const today = new Date().toISOString().split("T")[0];
+
+  const batches = [
+    {
+      product_name: "TOPGIT",
+      batch_number: "B260901",
+      viscosity: "1,850 cPs (Upper Limit Spec: 1,200 - 1,500 cPs)",
+      colour: "Clear Translucent",
+      solids: "24.2%",
+      qc_status: "Passed",
+      manufacturing_date: "2026-09-01",
+      expiry_date: "2028-09-01",
+      tested_by: "Dr. Chioma Okonkwo (QC)",
+      testing_date: "2026-09-01",
+      remarks: "Batch approved with solvent variance note. Slight viscosity elevation observed in retention sample."
+    },
+    {
+      product_name: "812M/GS1100 Beer Bottel labelling adhesive",
+      batch_number: "BB260710",
+      viscosity: "38,000 cPs (Spec: 35,000 - 42,000 cPs)",
+      colour: "Light Amber",
+      solids: "52.0%",
+      qc_status: "Passed",
+      manufacturing_date: "2026-07-10",
+      expiry_date: "2027-07-10",
+      tested_by: "Dr. Chioma Okonkwo (QC)",
+      testing_date: "2026-07-10",
+      remarks: "Brewery grade certification verified. Adhesion tack test on condensation glass passed."
+    },
+    {
+      product_name: "TOP BOND White Glue",
+      batch_number: "TB-2026-088",
+      viscosity: "45,000 cPs (Spec: 40,000 - 50,000 cPs)",
+      colour: "Milky White",
+      solids: "48.5%",
+      qc_status: "Passed",
+      manufacturing_date: "2026-08-15",
+      expiry_date: "2027-08-15",
+      tested_by: "QC Executive On Duty",
+      testing_date: "2026-08-15",
+      remarks: "Wood bond lap shear strength verified at 8.2 MPa. Standard dispatch approval."
+    },
+    {
+      product_name: "TOPGUM & Craft Glue",
+      batch_number: "TG-2026-042",
+      viscosity: "8,500 cPs (Spec: 7,500 - 9,500 cPs)",
+      colour: "Clear Pale Yellow",
+      solids: "35.0%",
+      qc_status: "Passed",
+      manufacturing_date: "2026-09-10",
+      expiry_date: "2027-09-10",
+      tested_by: "QC Executive On Duty",
+      testing_date: "2026-09-10",
+      remarks: "Stationery formulation clarity standard passed. pH 6.8."
+    },
+    {
+      product_name: "Tile Adhesive & Grout",
+      batch_number: "TAG-2026-119",
+      viscosity: "Thixotropic Mortar Paste",
+      colour: "Grey Standard",
+      solids: "100% Powder",
+      qc_status: "Passed",
+      manufacturing_date: "2026-09-18",
+      expiry_date: "2027-09-18",
+      tested_by: "Engr. Babatunde Alabi",
+      testing_date: "2026-09-18",
+      remarks: "Tensile adhesion after 28 days cure: 1.4 N/mm2. Conforms to C2TE."
+    },
+    {
+      product_name: "Waterproofing Solutions",
+      batch_number: "WP-2026-003",
+      viscosity: "1,200 cPs (Liquid Membrane)",
+      colour: "White Elastomeric",
+      solids: "62.0%",
+      qc_status: "Passed",
+      manufacturing_date: "2026-09-22",
+      expiry_date: "2027-09-22",
+      tested_by: "Dr. Chioma Okonkwo (QC)",
+      testing_date: "2026-09-22",
+      remarks: "Elongation at break 350%. Hydrostatic resistance passed."
+    },
+    {
+      product_name: "Wires and Cables",
+      batch_number: "WC-2026-054",
+      viscosity: "N/A (Conductor & Insulation)",
+      colour: "Black PVC Sheath",
+      solids: "100%",
+      qc_status: "Passed",
+      manufacturing_date: "2026-08-20",
+      expiry_date: "2036-08-20",
+      tested_by: "QC Electrical Inspection Lead",
+      testing_date: "2026-08-20",
+      remarks: "Spark testing at 6kV passed. Conductor resistance compliant with NIS/IEC 60227."
+    },
+    {
+      product_name: "Solvent Base Adhesive PU",
+      batch_number: "PU-SB-26099",
+      viscosity: "2,200 cPs (Spec: 2,000 - 2,500 cPs)",
+      colour: "Light Yellowish Amber",
+      solids: "18.5%",
+      qc_status: "Not Passed",
+      manufacturing_date: "2026-09-29",
+      expiry_date: "2027-09-29",
+      tested_by: "Dr. Chioma Okonkwo (QC)",
+      testing_date: "2026-09-29",
+      remarks: "Solids content below minimum 20% requirement. Quarantined in Bay 4 for re-homogenization."
+    }
+  ];
+
+  const stmt = db.prepare(`
+    INSERT OR REPLACE INTO qc_batch_reports (
+      product_name, batch_number, viscosity, colour, solids, qc_status,
+      manufacturing_date, expiry_date, tested_by, testing_date, remarks, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const b of batches) {
+    stmt.run(
+      b.product_name,
+      b.batch_number,
+      b.viscosity,
+      b.colour,
+      b.solids,
+      b.qc_status,
+      b.manufacturing_date,
+      b.expiry_date,
+      b.tested_by,
+      b.testing_date,
+      b.remarks,
+      now,
+      now
+    );
+  }
 }

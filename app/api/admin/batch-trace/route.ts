@@ -36,14 +36,20 @@ export async function GET(req: NextRequest) {
         level: b.total_complaints >= 3 ? "CRITICAL" : "WARNING",
       }));
 
-    // 3. If specific batch is requested, return full trace history
+    // 3. If specific batch is requested, return full trace history and factory QC report
     let specificTrace: any[] = [];
+    let qcReport: any = null;
     if (searchBatch) {
       specificTrace = db.prepare(`
         SELECT * FROM complaints 
         WHERE batch_number LIKE ? 
         ORDER BY created_at DESC
       `).all(`%${searchBatch}%`) as any[];
+
+      qcReport = db.prepare(`
+        SELECT * FROM qc_batch_reports 
+        WHERE batch_number = ? OR batch_number LIKE ?
+      `).get(searchBatch, `%${searchBatch}%`) as any;
     }
 
     return NextResponse.json({
@@ -51,6 +57,7 @@ export async function GET(req: NextRequest) {
       batchAggregates,
       recurringAlerts,
       specificTrace,
+      qcReport,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
