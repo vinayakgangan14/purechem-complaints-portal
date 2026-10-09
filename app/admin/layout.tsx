@@ -40,6 +40,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
+  const getRoleDestination = (role: string) => {
+    switch (role) {
+      case "sales":
+        return "/admin/sales/new-complaint";
+      case "management":
+        return "/admin/reports";
+      case "customer_service":
+        return "/admin/complaints";
+      case "quality_manager":
+      case "super_admin":
+        return "/admin";
+      case "customer":
+      default:
+        return "/portal";
+    }
+  };
+
   const handleRoleChange = async (role: string) => {
     try {
       await fetch("/api/auth/session", {
@@ -48,7 +65,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         body: JSON.stringify({ role }),
       });
       setActiveRole(role);
-      window.location.reload();
+      const target = getRoleDestination(role);
+      window.location.href = target;
     } catch (e) {
       console.error(e);
     }

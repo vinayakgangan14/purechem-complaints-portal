@@ -39,6 +39,23 @@ export default function Navbar() {
     }
   };
 
+  const getRoleDestination = (role: string) => {
+    switch (role) {
+      case "sales":
+        return "/admin/sales/new-complaint";
+      case "management":
+        return "/admin/reports";
+      case "customer_service":
+        return "/admin/complaints";
+      case "quality_manager":
+      case "super_admin":
+        return "/admin";
+      case "customer":
+      default:
+        return "/portal";
+    }
+  };
+
   const handleRoleSwitch = async (newRole: string) => {
     try {
       await fetch("/api/auth/session", {
@@ -47,7 +64,8 @@ export default function Navbar() {
         body: JSON.stringify({ role: newRole }),
       });
       setCurrentRole(newRole);
-      window.location.reload();
+      const target = getRoleDestination(newRole);
+      window.location.href = target;
     } catch (e) {
       console.error(e);
     }

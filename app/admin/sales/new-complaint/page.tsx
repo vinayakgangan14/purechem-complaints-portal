@@ -18,6 +18,56 @@ import {
   Copy,
 } from "lucide-react";
 
+const DEFAULT_CATEGORIES = [
+  "Adhesives",
+  "Construction Chemicals",
+  "Paint Chemicals",
+  "Resin",
+  "Polyester Resin",
+  "Polyurethane",
+  "Water-Based Adhesives",
+  "Solvent-Based Adhesives",
+  "PVC Adhesives",
+  "Industrial Glue",
+  "Electrical Wires & Cables",
+  "Other Purechem Products"
+];
+
+const DEFAULT_PRODUCTS = [
+  { id: 1, product_code: "PCM-ADH-001", product_name: "TOP BOND White Glue", category_name: "Water-Based Adhesives", pack_size: "500g, 1kg, 4kg, 20kg" },
+  { id: 2, product_code: "PCM-PVC-001", product_name: "TOPGIT", category_name: "PVC Adhesives", pack_size: "50g, 100g, 250g, 500g" },
+  { id: 3, product_code: "PCM-GUM-001", product_name: "TOPGUM & Craft Glue", category_name: "Adhesives", pack_size: "120ml Bottle, 250ml Jar" },
+  { id: 4, product_code: "PCM-IND-001", product_name: "812M/GS1100 Beer Bottel labelling adhesive", category_name: "Industrial Glue", pack_size: "25kg Drum, 200kg Drum" },
+  { id: 5, product_code: "PCM-CON-001", product_name: "Construction Chemicals & Grinding Aids", category_name: "Construction Chemicals", pack_size: "25kg Bag, 200L Drum, Bulk" },
+  { id: 6, product_code: "PCM-CON-002", product_name: "Tile Adhesive & Grout", category_name: "Construction Chemicals", pack_size: "20kg Bag, 25kg Bag" },
+  { id: 7, product_code: "PCM-CON-003", product_name: "Waterproofing Solutions", category_name: "Construction Chemicals", pack_size: "20L Pail, 25kg Slurry Pack" },
+  { id: 8, product_code: "PCM-CAB-001", product_name: "Wires and Cables", category_name: "Electrical Wires & Cables", pack_size: "100m Coils, Wooden Drums" },
+  { id: 9, product_code: "PCM-PUR-001", product_name: "Solvent Base Adhesive PU", category_name: "Polyurethane", pack_size: "15L Can, 200L Drum" },
+  { id: 10, product_code: "PCM-PUR-002", product_name: "Solvent Free Adhesive PU", category_name: "Polyurethane", pack_size: "25kg Pail, 200kg Drum" },
+  { id: 11, product_code: "PCM-PUR-003", product_name: "Inkbinder PU", category_name: "Polyurethane", pack_size: "200kg Drum" },
+];
+
+const DEFAULT_COMPLAINT_TYPES = [
+  "Product Quality",
+  "Product Performance",
+  "Packaging Issue",
+  "Leakage",
+  "Short Quantity",
+  "Colour Variation",
+  "Viscosity Issue",
+  "Adhesion Issue",
+  "Drying/Curing Issue",
+  "Settling",
+  "Gel Formation",
+  "Odour Issue",
+  "Contamination",
+  "Wrong Product Supplied",
+  "Damaged Material",
+  "Delivery Issue",
+  "Documentation Issue",
+  "Other"
+];
+
 export default function SalesRaiseComplaintPage() {
   const router = useRouter();
   const [salesReps, setSalesReps] = useState([
@@ -42,21 +92,26 @@ export default function SalesRaiseComplaintPage() {
     customer_email: "",
     customer_phone: "+234",
     customer_type: "Customer",
-    product_category: "PVC Adhesives",
-    product_name: "TOPGIT PVC Pipe Cement 500g",
-    product_code: "PCM-PVC-003",
+    product_category: "Water-Based Adhesives",
+    product_name: "TOP BOND White Glue",
+    product_code: "PCM-ADH-001",
     batch_number: "",
-    pack_size: "500g Can",
+    pack_size: "500g, 1kg, 4kg, 20kg",
     quantity_purchased: "",
     invoice_number: "",
-    complaint_type: "Viscosity Issue",
+    complaint_type: "Product Quality",
     customer_priority: "Normal",
     description: "",
   });
 
-  const [categories, setCategories] = useState<string[]>([]);
-  const [productsList, setProductsList] = useState<any[]>([]);
-  const [typesList, setTypesList] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [productsList, setProductsList] = useState<any[]>(DEFAULT_PRODUCTS);
+  const [typesList, setTypesList] = useState<string[]>(DEFAULT_COMPLAINT_TYPES);
+
+  // Other product custom fields
+  const [isOtherProduct, setIsOtherProduct] = useState(false);
+  const [customProductName, setCustomProductName] = useState("");
+  const [customProductDescription, setCustomProductDescription] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -71,9 +126,9 @@ export default function SalesRaiseComplaintPage() {
       const res = await fetch("/api/admin/settings");
       const data = await res.json();
       if (data.success) {
-        if (data.categories) setCategories(data.categories.map((c: any) => c.name));
-        if (data.products) setProductsList(data.products);
-        if (data.complaintTypes) setTypesList(data.complaintTypes.map((t: any) => t.name));
+        if (data.categories?.length) setCategories(data.categories.map((c: any) => c.name));
+        if (data.products?.length) setProductsList(data.products);
+        if (data.complaintTypes?.length) setTypesList(data.complaintTypes.map((t: any) => t.name));
       }
     } catch (e) {
       console.error(e);
@@ -92,6 +147,17 @@ export default function SalesRaiseComplaintPage() {
   };
 
   const handleProductSelect = (name: string) => {
+    if (name === "Other Purechem Product" || name === "Other") {
+      setIsOtherProduct(true);
+      setFormData((prev) => ({
+        ...prev,
+        product_name: "Other Purechem Product",
+        product_code: "PCM-OTHER",
+      }));
+      return;
+    }
+
+    setIsOtherProduct(false);
     const matched = productsList.find((p) => p.product_name === name);
     if (matched) {
       setFormData((prev) => ({
@@ -115,13 +181,25 @@ export default function SalesRaiseComplaintPage() {
       return;
     }
 
+    if (isOtherProduct && !customProductName.trim()) {
+      setErrorMessage("Please enter the specific name of the Purechem Product.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const finalProductName = isOtherProduct ? customProductName.trim() : formData.product_name;
+      const finalDescription = isOtherProduct && customProductDescription.trim()
+        ? `[Custom Product Details: ${customProductDescription.trim()}]\n\n${formData.description.trim()}`
+        : formData.description.trim();
+
       const res = await fetch("/api/complaints", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          product_name: finalProductName,
+          description: finalDescription,
           raised_by_role: "Sales",
           raised_by_name: selectedSalesRep,
         }),
@@ -298,15 +376,16 @@ export default function SalesRaiseComplaintPage() {
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Product Name *</label>
             <select
-              value={formData.product_name}
+              value={isOtherProduct ? "Other Purechem Product" : formData.product_name}
               onChange={(e) => handleProductSelect(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs"
             >
               {productsList.map((p) => (
-                <option key={p.id} value={p.product_name}>
-                  {p.product_name}
+                <option key={p.id || p.product_code} value={p.product_name}>
+                  {p.product_name} ({p.pack_size || p.product_code})
                 </option>
               ))}
+              <option value="Other Purechem Product">Other Purechem Product (Specify below)</option>
             </select>
           </div>
 
@@ -320,6 +399,42 @@ export default function SalesRaiseComplaintPage() {
               className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono"
             />
           </div>
+
+          {/* Conditional Manual Description / Specification for Other Product */}
+          {isOtherProduct && (
+            <div className="sm:col-span-2 p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-2">
+              <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                Specify Custom / Other Purechem Product
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                    Product Name / Brand <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Purechem Special PU Grade 200"
+                    value={customProductName}
+                    onChange={(e) => setCustomProductName(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded border border-amber-300 text-xs bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">
+                    Product Details / Specifications
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Batch supplied from Isolo factory"
+                    value={customProductDescription}
+                    onChange={(e) => setCustomProductDescription(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded border border-amber-300 text-xs bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Complaint Type *</label>
