@@ -86,6 +86,10 @@ function ComplaintFormContent() {
   const [customProductName, setCustomProductName] = useState("");
   const [customProductDescription, setCustomProductDescription] = useState("");
 
+  // Role toggle: Customer vs Sales Representative
+  const [isRaisedBySales, setIsRaisedBySales] = useState(false);
+  const [salesRepName, setSalesRepName] = useState("Femi Adeyemi (Lagos Mainland)");
+
   // Form State
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -264,6 +268,8 @@ function ComplaintFormContent() {
 
       const payload = {
         ...formData,
+        raised_by_role: isRaisedBySales ? "Sales" : (formData.customer_type === "Distributor" ? "Distributor" : "Customer"),
+        raised_by_name: isRaisedBySales ? salesRepName : formData.customer_name,
         product_name: finalProductName,
         description: finalDescription,
       };
@@ -416,6 +422,94 @@ function ComplaintFormContent() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-md border border-slate-200">
+        {/* Identity Selector: Customer vs Sales Representative */}
+        <div className="bg-slate-50 p-4.5 rounded-xl border border-slate-200 space-y-3">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Who is registering this complaint?
+          </label>
+          <div className="flex flex-wrap gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setIsRaisedBySales(false);
+                setFormData((prev) => ({ ...prev, customer_type: "Customer" }));
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                !isRaisedBySales
+                  ? "bg-purechem-navy text-white shadow-md"
+                  : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+              }`}
+            >
+              🏢 End Customer / Dealer / Distributor
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRaisedBySales(true);
+                setFormData((prev) => ({ ...prev, customer_type: "Sales" }));
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                isRaisedBySales
+                  ? "bg-purechem-orange text-white shadow-md"
+                  : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+              }`}
+            >
+              👔 Purechem Sales Representative (On Behalf of Client)
+            </button>
+          </div>
+
+          {isRaisedBySales && (
+            <div className="mt-3 pt-3 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-lg border border-orange-200">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Logging Sales Representative *
+                </label>
+                <select
+                  value={salesRepName}
+                  onChange={(e) => setSalesRepName(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-orange-300 text-xs font-semibold bg-white"
+                >
+                  <option value="Femi Adeyemi (Lagos Mainland)">Femi Adeyemi (Lagos Mainland)</option>
+                  <option value="Ibrahim Bello (Kano/North)">Ibrahim Bello (Kano/North)</option>
+                  <option value="Nnamdi Okeke (Onitsha/East)">Nnamdi Okeke (Onitsha/East)</option>
+                  <option value="Blessing Oladipo (Ibadan/West)">Blessing Oladipo (Ibadan/West)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Quick Customer Select (Optional)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { name: "Alhaji Danladi Musa", company: "Kabor Furniture Works Kano", email: "danladi@kaborfurniture.ng", phone: "+2348035544332", type: "Distributor" },
+                    { name: "Chief Emeka Eze", company: "Eze & Sons Construction Onitsha", email: "eze@ezebuilders.com", phone: "+2348067788990", type: "Dealer" },
+                    { name: "Mr. Adebayo Ogunleye", company: "Ikeja Woodworking Hub Lagos", email: "adebayo@ikejawood.com", phone: "+2348023456789", type: "Customer" },
+                  ].map((cust, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          customer_name: cust.name,
+                          customer_company: cust.company,
+                          customer_email: cust.email,
+                          customer_phone: cust.phone,
+                          customer_type: cust.type,
+                        }))
+                      }
+                      className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[11px] font-medium text-slate-700"
+                    >
+                      + {cust.name.split(" ")[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* STEP 1: Customer Information (Section 2, 3) */}
         <div>
           <h2 className="text-base font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4 flex items-center gap-2">

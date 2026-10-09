@@ -127,57 +127,65 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          {/* Desktop Navigation Links - Simplified 3 Core Pillars */}
+          <nav className="hidden md:flex items-center gap-1.5 lg:gap-3">
             <Link
               href="/"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 pathname === "/" ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800/60"
               }`}
             >
               Home
             </Link>
 
-            <Link
-              href="/track"
-              className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors ${
-                pathname === "/track" ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-              }`}
-            >
-              <Search className="w-4 h-4 text-purechem-orange" />
-              Track Complaint
-            </Link>
-
-            <Link
-              href="/portal"
-              className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 transition-colors ${
-                pathname === "/portal" ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-              }`}
-            >
-              <User className="w-4 h-4 text-blue-400" />
-              My Complaints
-            </Link>
-
-            {/* Raise Complaint Action Button */}
+            {/* Pillar 1: Raise Complaint */}
             <Link
               href="/complaint/new"
-              className="ml-2 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold bg-purechem-orange hover:bg-purechem-orange-dark text-white shadow-sm transition-all transform active:scale-95"
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                pathname === "/complaint/new"
+                  ? "bg-purechem-orange text-white"
+                  : "bg-purechem-orange hover:bg-purechem-orange-dark text-white"
+              }`}
             >
               <PlusCircle className="w-4 h-4" />
               RAISE COMPLAINT
             </Link>
 
-            {/* Admin Command Link */}
+            {/* Pillar 2: Resolution Desk */}
             <Link
-              href="/admin"
-              className={`ml-2 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1.5 border transition-colors ${
-                isAdminArea
-                  ? "bg-purechem-orange text-white border-purechem-orange"
-                  : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white"
+              href="/admin/resolve"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                pathname === "/admin/resolve"
+                  ? "bg-emerald-600 text-white border-emerald-500 shadow"
+                  : "bg-slate-800 text-emerald-300 border-slate-700 hover:bg-slate-700 hover:text-white"
               }`}
             >
-              <LayoutDashboard className="w-4 h-4 text-amber-400" />
-              Admin Portal
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              RESOLUTION DESK
+            </Link>
+
+            {/* Pillar 3: Admin & Analytics */}
+            <Link
+              href="/admin"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                pathname === "/admin"
+                  ? "bg-blue-600 text-white border-blue-500 shadow"
+                  : "bg-slate-800 text-blue-300 border-slate-700 hover:bg-slate-700 hover:text-white"
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 text-blue-400" />
+              ADMIN & ANALYTICS
+            </Link>
+
+            {/* Public Track by ID */}
+            <Link
+              href="/track"
+              className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
+                pathname === "/track" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Search className="w-3.5 h-3.5 text-purechem-orange" />
+              Track
             </Link>
           </nav>
 
@@ -187,7 +195,7 @@ export default function Navbar() {
               href="/complaint/new"
               className="px-3 py-1.5 text-xs font-bold bg-purechem-orange text-white rounded shadow-sm"
             >
-              Raise
+              + Raise
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -201,41 +209,41 @@ export default function Navbar() {
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-purechem-navy-dark border-t border-slate-700 px-4 pt-2 pb-4 space-y-2">
+        <div className="md:hidden bg-purechem-navy-dark border-t border-slate-700 px-4 pt-2 pb-4 space-y-2 text-sm">
           <Link
             href="/"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-slate-800"
+            className="block px-3 py-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800"
           >
             Home
           </Link>
           <Link
-            href="/track"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-slate-800"
-          >
-            Track Complaint
-          </Link>
-          <Link
-            href="/portal"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-slate-800"
-          >
-            My Complaints
-          </Link>
-          <Link
             href="/complaint/new"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-bold text-purechem-orange bg-slate-900 border border-purechem-orange/40"
+            className="block px-3 py-2 rounded-md font-bold text-white bg-purechem-orange"
           >
-            + Raise New Complaint
+            + 1. Raise Complaint
+          </Link>
+          <Link
+            href="/admin/resolve"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md font-bold text-emerald-300 bg-slate-800 border border-emerald-500/30"
+          >
+            ⚖️ 2. Complaint Resolution Desk
           </Link>
           <Link
             href="/admin"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-base font-medium text-amber-400 bg-slate-800"
+            className="block px-3 py-2 rounded-md font-bold text-blue-300 bg-slate-800 border border-blue-500/30"
           >
-            Admin Dashboard
+            📊 3. Admin & Analytics Dashboard
+          </Link>
+          <Link
+            href="/track"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-slate-400 hover:text-white"
+          >
+            🔍 Track by Reference ID
           </Link>
         </div>
       )}

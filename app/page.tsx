@@ -60,28 +60,36 @@ export default function HomePage() {
             transparent, and precise resolution across all Nigerian states.
           </p>
 
-          {/* Primary Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          {/* Primary 3 Core Pillar Action Buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-3.5 pt-4">
             <Link
               href="/complaint/new"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-lg font-bold bg-purechem-orange hover:bg-purechem-orange-dark text-white shadow-lg hover:shadow-purechem-orange/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-purechem-orange hover:bg-purechem-orange-dark text-white shadow-lg hover:shadow-purechem-orange/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <PlusCircle className="w-5 h-5" />
-              RAISE A COMPLAINT
+              1. RAISE COMPLAINT
             </Link>
 
             <Link
-              href="/track"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl text-lg font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
+              href="/admin/resolve"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              <Search className="w-5 h-5 text-purechem-orange" />
-              TRACK MY COMPLAINT
+              <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+              2. RESOLUTION DESK
+            </Link>
+
+            <Link
+              href="/admin"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <ShieldCheck className="w-5 h-5 text-blue-300" />
+              3. ADMIN & ANALYTICS
             </Link>
           </div>
 
           {/* Quick Notice */}
           <p className="text-xs text-slate-400">
-            No complicated passwords required. Simply provide your name, phone number, and complaint details.
+            Frictionless portal: Raise complaints directly, resolve issues with CAPA timers, or view the executive analytics dashboard.
           </p>
         </div>
       </section>

@@ -94,24 +94,23 @@ export default function AdminComplaintsPage() {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
-            href="/api/admin/export?format=csv"
-            target="_blank"
-            className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
+            href="/admin/resolve"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold shadow flex items-center gap-1.5 transition-colors"
           >
-            <Download className="w-4 h-4 text-slate-600" /> Export CSV
+            <CheckCircle2 className="w-4 h-4" /> Open Resolution Desk →
           </Link>
           <Link
             href="/api/admin/export?format=excel"
             target="_blank"
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
           >
-            <FileSpreadsheet className="w-4 h-4" /> Export Excel (.xlsx)
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Export Excel (.xlsx)
           </Link>
           <Link
-            href="/admin/sales/new-complaint"
+            href="/complaint/new"
             className="px-3.5 py-2 bg-purechem-orange hover:bg-purechem-orange-dark text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5"
           >
-            <PlusCircle className="w-4 h-4" /> Raise for Customer
+            <PlusCircle className="w-4 h-4" /> + Raise Complaint
           </Link>
         </div>
       </div>

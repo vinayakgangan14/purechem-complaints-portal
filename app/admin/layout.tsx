@@ -73,11 +73,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const navItems = [
-    { label: "Dashboard / KPIs", href: "/admin", icon: LayoutDashboard },
-    { label: "Complaints Register", href: "/admin/complaints", icon: ClipboardList },
-    { label: "Raise for Customer (Sales)", href: "/admin/sales/new-complaint", icon: PhoneForwarded },
+    { label: "Dashboard & Analytics", href: "/admin", icon: LayoutDashboard },
+    { label: "Complaint Resolution Desk", href: "/admin/resolve", icon: ClipboardList },
+    { label: "Raise New Complaint", href: "/complaint/new", icon: PhoneForwarded },
+  ];
+
+  const secondaryNavItems = [
     { label: "Batch Traceability", href: "/admin/batch-trace", icon: Layers },
-    { label: "Reports & Analytics", href: "/admin/reports", icon: BarChart3 },
     { label: "System Settings", href: "/admin/settings", icon: Settings },
   ];
 
@@ -133,6 +135,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Navigation Links */}
         <nav className="p-3 space-y-1 grow">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">
+            Core Portals
+          </div>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -144,7 +149,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
                     ? "bg-purechem-orange text-white shadow-md font-bold"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    : "text-slate-300 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="pt-4 mt-2 border-t border-slate-800/80 text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">
+            System Tools
+          </div>
+          {secondaryNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                  isActive
+                    ? "bg-slate-800 text-white font-bold"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
