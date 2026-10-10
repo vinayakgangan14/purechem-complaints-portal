@@ -2,44 +2,39 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { supabase, isSupabaseConfigured } from "@/lib/db/supabase";
+import { supabase } from "@/lib/db/supabase";
 
 export async function GET(req: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(req.url);
     const batch = searchParams.get("batch");
     const search = searchParams.get("search");
     const status = searchParams.get("status");
 
-    let query = "SELECT * FROM qc_batch_reports WHERE 1=1";
-    const params: any[] = [];
+    let query = supabase.from("qc_batch_reports").select("*");
 
     if (batch) {
-      query += " AND (batch_number = ? OR batch_number LIKE ?)";
-      params.push(batch, `%${batch}%`);
+      query = query.or(`batch_number.eq.${batch},batch_number.ilike.%${batch}%`);
     }
 
     if (status && status !== "ALL") {
-      query += " AND qc_status = ?";
-      params.push(status);
+      query = query.eq("qc_status", status);
     }
 
     if (search) {
-      query += " AND (batch_number LIKE ? OR product_name LIKE ? OR remarks LIKE ? OR tested_by LIKE ?)";
-      const pattern = `%${search}%`;
-      params.push(pattern, pattern, pattern, pattern);
+      query = query.or(`batch_number.ilike.%${search}%,product_name.ilike.%${search}%,remarks.ilike.%${search}%,tested_by.ilike.%${search}%`);
     }
 
-    query += " ORDER BY testing_date DESC, created_at DESC";
+    const { data: batches, error } = await query.order("testing_date", { ascending: false });
 
-    const batches = db.prepare(query).all(...params);
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      batches,
-      count: batches.length,
+      batches: batches || [],
+      count: batches?.length || 0,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -48,7 +43,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const db = getDb();
     const body = await req.json();
 
     const {
@@ -76,68 +70,31 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     const testDate = testing_date || now.split("T")[0];
 
-    const stmt = db.prepare(`
-      INSERT INTO qc_batch_reports (
-        product_name, batch_number, viscosity, colour, solids, qc_status,
-        manufacturing_date, expiry_date, tested_by, testing_date, remarks, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(batch_number) DO UPDATE SET
-        product_name = excluded.product_name,
-        viscosity = excluded.viscosity,
-        colour = excluded.colour,
-        solids = excluded.solids,
-        qc_status = excluded.qc_status,
-        manufacturing_date = excluded.manufacturing_date,
-        expiry_date = excluded.expiry_date,
-        tested_by = excluded.tested_by,
-        testing_date = excluded.testing_date,
-        remarks = excluded.remarks,
-        updated_at = excluded.updated_at
-    `);
+    const payload = {
+      product_name: product_name.trim(),
+      batch_number: cleanBatch,
+      viscosity: viscosity || "Standard",
+      colour: colour || "Standard",
+      solids: solids || "Standard",
+      qc_status: qc_status || "Passed",
+      manufacturing_date: manufacturing_date || null,
+      expiry_date: expiry_date || null,
+      tested_by: tested_by || "Dr. Chioma Okonkwo (QC)",
+      testing_date: testDate,
+      remarks: remarks || "",
+      created_at: now,
+      updated_at: now,
+    };
 
-    stmt.run(
-      product_name.trim(),
-      cleanBatch,
-      viscosity?.trim() || "Standard",
-      colour?.trim() || "Standard",
-      solids?.trim() || "Standard",
-      qc_status || "Passed",
-      manufacturing_date || null,
-      expiry_date || null,
-      tested_by?.trim() || "Dr. Chioma Okonkwo (QC)",
-      testDate,
-      remarks?.trim() || "Daily factory test verified.",
-      now,
-      now
-    );
+    const { error } = await supabase.from("qc_batch_reports").upsert(payload, { onConflict: "batch_number" });
 
-    const saved = db.prepare("SELECT * FROM qc_batch_reports WHERE batch_number = ?").get(cleanBatch);
-
-    // Dual-write to Supabase if configured
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from("qc_batch_reports").upsert({
-          product_name: product_name.trim(),
-          batch_number: cleanBatch,
-          viscosity: viscosity?.trim() || "Standard",
-          colour: colour?.trim() || "Standard",
-          solids: solids?.trim() || "Standard",
-          qc_status: qc_status || "Passed",
-          manufacturing_date: manufacturing_date || null,
-          expiry_date: expiry_date || null,
-          tested_by: tested_by?.trim() || "Dr. Chioma Okonkwo (QC)",
-          testing_date: testDate,
-          remarks: remarks?.trim() || "Daily factory test verified.",
-        }, { onConflict: "batch_number" });
-      } catch (sbErr: any) {
-        console.warn("Supabase QC dual-write:", sbErr.message);
-      }
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: `QC test report for batch ${cleanBatch} logged successfully.`,
-      batch: saved,
+      message: `QC Batch Report for ${cleanBatch} saved successfully.`,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

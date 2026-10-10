@@ -2,12 +2,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { isSupabaseConfigured, syncTimelineToSupabase } from "@/lib/db/supabase";
+import { supabase } from "@/lib/db/supabase";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const db = getDb();
     const id = params.id;
     const body = await req.json();
     const { action: customAction, comment, is_internal_only, performed_by, performed_by_role } = body;
@@ -16,50 +14,46 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ success: false, error: "Comment text cannot be empty" }, { status: 400 });
     }
 
-    const complaint = db.prepare("SELECT * FROM complaints WHERE id = ? OR complaint_number = ?").get(id, id) as any;
-    if (!complaint) {
+    const { data: complaint, error: compErr } = await supabase
+      .from("complaints")
+      .select("id, status")
+      .or(`id.eq.${id},complaint_number.eq.${id}`)
+      .maybeSingle();
+
+    if (compErr || !complaint) {
       return NextResponse.json({ success: false, error: "Complaint not found" }, { status: 404 });
     }
 
     const now = new Date().toISOString();
-    const isInternal = is_internal_only ? 1 : 0;
+    const isInternal = Boolean(is_internal_only);
     const action = customAction || (isInternal ? "Internal QA Lab Note" : "Customer Communication");
     const staffRole = performed_by_role || req.cookies.get("pcm_role")?.value || "Quality";
     const staffName = performed_by || (staffRole === "quality_manager" || staffRole === "Quality" ? "Dr. Chioma Okonkwo (QC)" : "Purechem Staff");
 
-    db.prepare(`
-      INSERT INTO complaint_timeline (
-        complaint_id, action, old_status, new_status, comment, is_internal_only, performed_by, performed_by_role, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      complaint.id,
-      action,
-      complaint.status,
-      complaint.status,
-      comment.trim(),
-      isInternal,
-      staffName,
-      staffRole,
-      now
-    );
-
-    if (isSupabaseConfigured) {
-      syncTimelineToSupabase({
+    const { data: inserted, error: insErr } = await supabase
+      .from("complaint_timeline")
+      .insert({
         complaint_id: complaint.id,
         action,
         old_status: complaint.status,
         new_status: complaint.status,
         comment: comment.trim(),
-        is_internal_only: Boolean(isInternal),
+        is_internal_only: isInternal,
         performed_by: staffName,
         performed_by_role: staffRole,
         created_at: now,
-      }).catch((e) => console.warn("Supabase timeline warning:", e.message));
+      })
+      .select()
+      .single();
+
+    if (insErr) {
+      return NextResponse.json({ success: false, error: insErr.message }, { status: 500 });
     }
 
-    const inserted = db.prepare("SELECT * FROM complaint_timeline WHERE complaint_id = ? ORDER BY id DESC LIMIT 1").get(complaint.id);
-
-    return NextResponse.json({ success: true, message: "Timeline entry recorded", entry: inserted });
+    return NextResponse.json({
+      success: true,
+      timeline: inserted,
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

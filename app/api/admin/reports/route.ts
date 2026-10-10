@@ -2,34 +2,36 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/db/supabase";
 import { calculateDuration, isComplaintOverdue } from "@/lib/timer/resolution";
 
 export async function GET(req: NextRequest) {
   try {
-    const db = getDb();
-    const complaints = db.prepare("SELECT * FROM complaints").all() as any[];
+    const { data: rows, error } = await supabase.from("complaints").select("*");
 
-    // 1. KPI Cards
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    const complaints = rows || [];
+
     const totalComplaints = complaints.length;
-    const openComplaints = complaints.filter((c) => c.status !== "RESOLVED" && c.status !== "CLOSED").length;
-    const resolvedComplaints = complaints.filter((c) => c.status === "RESOLVED").length;
-    const closedComplaints = complaints.filter((c) => c.status === "CLOSED").length;
-    const underInvestigation = complaints.filter((c) =>
+    const openComplaints = complaints.filter((c: any) => c.status !== "RESOLVED" && c.status !== "CLOSED").length;
+    const resolvedComplaints = complaints.filter((c: any) => c.status === "RESOLVED").length;
+    const closedComplaints = complaints.filter((c: any) => c.status === "CLOSED").length;
+    const underInvestigation = complaints.filter((c: any) =>
       ["INVESTIGATION", "SAMPLE REQUIRED", "UNDER TESTING", "ROOT CAUSE ANALYSIS"].includes(c.status)
     ).length;
 
-    // Today & this month
     const todayStr = new Date().toISOString().slice(0, 10);
     const thisMonthStr = new Date().toISOString().slice(0, 7);
-    const newToday = complaints.filter((c) => c.created_at.startsWith(todayStr)).length;
-    const newThisMonth = complaints.filter((c) => c.created_at.startsWith(thisMonthStr)).length;
+    const newToday = complaints.filter((c: any) => (c.created_at || "").startsWith(todayStr)).length;
+    const newThisMonth = complaints.filter((c: any) => (c.created_at || "").startsWith(thisMonthStr)).length;
 
-    // Overdue count
     let overdueCount = 0;
     const resolvedDurations: number[] = [];
 
-    complaints.forEach((c) => {
+    complaints.forEach((c: any) => {
       const isOverdue = isComplaintOverdue(
         c.complaint_open_time,
         c.target_resolution_hours || 72,
@@ -56,36 +58,35 @@ export async function GET(req: NextRequest) {
     const maxHours = (maxResolutionMinutes / 60).toFixed(1);
     const minHours = (minResolutionMinutes / 60).toFixed(1);
 
-    // 2. Breakdown by Product
     const productMap: Record<string, number> = {};
-    complaints.forEach((c) => {
-      productMap[c.product_name] = (productMap[c.product_name] || 0) + 1;
+    complaints.forEach((c: any) => {
+      const p = c.product_name || "Unspecified";
+      productMap[p] = (productMap[p] || 0) + 1;
     });
     const productStats = Object.entries(productMap)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // 3. Breakdown by Category
     const categoryMap: Record<string, number> = {};
-    complaints.forEach((c) => {
-      categoryMap[c.product_category] = (categoryMap[c.product_category] || 0) + 1;
+    complaints.forEach((c: any) => {
+      const cat = c.product_category || "Adhesives";
+      categoryMap[cat] = (categoryMap[cat] || 0) + 1;
     });
     const categoryStats = Object.entries(categoryMap)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // 4. Breakdown by Complaint Type
     const typeMap: Record<string, number> = {};
-    complaints.forEach((c) => {
-      typeMap[c.complaint_type] = (typeMap[c.complaint_type] || 0) + 1;
+    complaints.forEach((c: any) => {
+      const t = c.complaint_type || "Other";
+      typeMap[t] = (typeMap[t] || 0) + 1;
     });
     const typeStats = Object.entries(typeMap)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
-    // 5. Department Performance
     const departmentMap: Record<string, { total: number; resolved: number }> = {};
-    complaints.forEach((c) => {
+    complaints.forEach((c: any) => {
       const dept = c.assigned_department || "Unassigned";
       if (!departmentMap[dept]) departmentMap[dept] = { total: 0, resolved: 0 };
       departmentMap[dept].total++;
@@ -98,16 +99,15 @@ export async function GET(req: NextRequest) {
       department: dept,
       total: data.total,
       resolved: data.resolved,
-      rate: Math.round((data.resolved / data.total) * 100),
+      rate: data.total > 0 ? Math.round((data.resolved / data.total) * 100) : 0,
     }));
 
-    // 6. Monthly Trend (last 6 months)
-    const monthMap: Record<string, number> = {};
-    complaints.forEach((c) => {
-      const m = c.created_at.slice(0, 7);
-      monthMap[m] = (monthMap[m] || 0) + 1;
+    const monthlyMap: Record<string, number> = {};
+    complaints.forEach((c: any) => {
+      const m = (c.created_at || "").slice(0, 7) || thisMonthStr;
+      monthlyMap[m] = (monthlyMap[m] || 0) + 1;
     });
-    const monthlyStats = Object.entries(monthMap)
+    const monthlyTrend = Object.entries(monthlyMap)
       .map(([month, count]) => ({ month, count }))
       .sort((a, b) => a.month.localeCompare(b.month));
 
@@ -116,21 +116,22 @@ export async function GET(req: NextRequest) {
       kpis: {
         totalComplaints,
         openComplaints,
-        newToday,
-        newThisMonth,
-        underInvestigation,
-        overdueComplaints: overdueCount,
         resolvedComplaints,
         closedComplaints,
-        avgResolutionHours: `${avgHours} hrs`,
-        maxResolutionHours: `${maxHours} hrs`,
-        minResolutionHours: `${minHours} hrs`,
+        underInvestigation,
+        newToday,
+        newThisMonth,
+        overdueCount,
+        avgResolutionHours: avgHours,
+        maxResolutionHours: maxHours,
+        minResolutionHours: minHours,
+        resolutionRate: totalComplaints > 0 ? Math.round(((resolvedComplaints + closedComplaints) / totalComplaints) * 100) : 0,
       },
       productStats,
       categoryStats,
       typeStats,
       departmentStats,
-      monthlyStats,
+      monthlyTrend,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

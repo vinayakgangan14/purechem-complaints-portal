@@ -117,3 +117,14 @@ export const SLA_TARGETS = {
   High: 48,     // 2 days
   Critical: 24, // 1 day
 };
+
+export function formatDurationMinutes(minutes: number): string {
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  parts.push(`${mins}m`);
+  return parts.join(" ");
+}

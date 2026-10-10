@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { supabase } from "@/lib/db/supabase";
 
 const ROLE_DEFAULT_EMAILS: Record<string, string> = {
   super_admin: "admin@purechemmanufacturing.com",
@@ -18,19 +18,18 @@ export async function GET(req: NextRequest) {
     const role = req.cookies.get("pcm_role")?.value || "customer";
     const email = req.cookies.get("pcm_email")?.value;
 
-    const db = getDb();
     let user = null;
     if (email) {
-      user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+      const { data } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
+      user = data;
     }
 
-    // If no user found or user's role does not match the active role cookie, find staff member for that role
     if (!user || user.role !== role) {
-      user = db.prepare("SELECT * FROM users WHERE role = ? LIMIT 1").get(role);
+      const { data } = await supabase.from("users").select("*").eq("role", role).limit(1).maybeSingle();
+      user = data;
     }
 
     if (!user) {
-      // Default fallback
       user = {
         id: "USR-GUEST",
         name: "Guest User",
@@ -53,53 +52,39 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, role, name, phone, company, customer_type } = body;
 
-    const db = getDb();
     const effectiveRole = role || "customer";
     let targetEmail = email;
 
-    // If switching role without explicit email, use the standard staff email for that role
-    if (!targetEmail && effectiveRole && ROLE_DEFAULT_EMAILS[effectiveRole]) {
-      targetEmail = ROLE_DEFAULT_EMAILS[effectiveRole];
+    if (!targetEmail) {
+      targetEmail = ROLE_DEFAULT_EMAILS[effectiveRole] || "guest@purechem.ng";
     }
 
-    let existingUser = targetEmail ? db.prepare("SELECT * FROM users WHERE email = ?").get(targetEmail) : null;
+    let { data: user } = await supabase.from("users").select("*").eq("email", targetEmail).maybeSingle();
 
-    if (!existingUser && targetEmail) {
-      const id = `USR-${Date.now().toString(36).toUpperCase()}`;
+    if (!user) {
       const now = new Date().toISOString();
-      db.prepare(`
-        INSERT INTO users (id, name, email, phone, company, role, customer_type, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-      `).run(
-        id,
-        name || (effectiveRole === "customer" ? "Customer" : `${effectiveRole} Staff`),
-        targetEmail,
-        phone || "+234",
-        company || "Purechem",
-        effectiveRole,
-        customer_type || "Customer",
-        now,
-        now
-      );
-      existingUser = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-    } else if (existingUser && role) {
-      existingUser.role = role;
+      const newUserId = `USR-${Date.now().toString(36).toUpperCase()}`;
+      const newUser = {
+        id: newUserId,
+        name: name || (effectiveRole === "customer" ? "Customer User" : "Staff Member"),
+        email: targetEmail,
+        phone: phone || "+2348000000000",
+        company: company || (effectiveRole === "customer" ? "Direct Client" : "Purechem Ltd"),
+        role: effectiveRole,
+        customer_type: customer_type || (effectiveRole === "customer" ? "Customer" : "Staff"),
+        created_at: now,
+        updated_at: now,
+      };
+
+      await supabase.from("users").insert(newUser);
+      user = newUser;
     }
 
-    if (!existingUser) {
-      existingUser = db.prepare("SELECT * FROM users WHERE role = ? LIMIT 1").get(effectiveRole);
-    }
-
-    const response = NextResponse.json({ success: true, user: existingUser });
-    response.cookies.set("pcm_role", effectiveRole, { path: "/" });
-    if (existingUser?.email) {
-      response.cookies.set("pcm_email", existingUser.email, { path: "/" });
-    } else if (targetEmail) {
-      response.cookies.set("pcm_email", targetEmail, { path: "/" });
-    }
-    return response;
+    const res = NextResponse.json({ success: true, user });
+    res.cookies.set("pcm_role", user.role, { path: "/", maxAge: 60 * 60 * 24 * 7 });
+    res.cookies.set("pcm_email", user.email, { path: "/", maxAge: 60 * 60 * 24 * 7 });
+    return res;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

@@ -1,27 +1,28 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import fs from "node:fs";
 import path from "node:path";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const DEFAULT_SUPABASE_URL = "https://qgyjqwefauomhltbjtjy.supabase.co";
+const DEFAULT_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFneWpxd2VmYXVvbWhsdGJqdGp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTQ2NzYxOSwiZXhwIjoyMTA3MDQzNjE5fQ.hh-QdJ7bPPZLnkv9roH8wXYh25bi6AyrycR7vzXXm-k";
+const DEFAULT_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFneWpxd2VmYXVvbWhsdGJqdGp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0Njc2MTksImV4cCI6MjEwNzA0MzYxOX0.tvec3H3C6bcDU_fHNPBrjEES8n1T94M99BWLqXoNxU8";
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+export const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SERVICE_KEY;
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseKey as string, {
-      auth: {
-        persistSession: false,
-      },
-    })
-  : null;
+export const isSupabaseConfigured = true;
+
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+  },
+});
+
+export function getSupabase(): SupabaseClient {
+  return supabase;
+}
 
 const BUCKET_NAME = "complaint-attachments";
 
-/**
- * Ensures the attachments bucket exists in Supabase Storage.
- */
 export async function ensureAttachmentsBucket(): Promise<boolean> {
-  if (!supabase) return false;
   try {
     const { data: buckets, error } = await supabase.storage.listBuckets();
     if (error) {
@@ -44,9 +45,6 @@ export async function ensureAttachmentsBucket(): Promise<boolean> {
   }
 }
 
-/**
- * Upload an attachment file to Supabase Storage and record in Supabase attachments table.
- */
 export async function uploadAndSyncAttachmentToSupabase(params: {
   id?: string;
   complaint_id: string;
@@ -57,10 +55,6 @@ export async function uploadAndSyncAttachmentToSupabase(params: {
   attachment_category?: string;
   uploaded_by?: string;
 }): Promise<{ success: boolean; file_url?: string; error?: string }> {
-  if (!supabase) {
-    return { success: false, error: "Supabase not configured" };
-  }
-
   try {
     await ensureAttachmentsBucket();
 
@@ -68,7 +62,6 @@ export async function uploadAndSyncAttachmentToSupabase(params: {
     const cleanBase = path.basename(params.file_name, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
     const storagePath = `${params.complaint_id}/${Date.now()}-${cleanBase}${ext}`;
 
-    // Upload to Supabase Storage bucket
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(storagePath, params.file_buffer, {
@@ -87,7 +80,6 @@ export async function uploadAndSyncAttachmentToSupabase(params: {
     const attachmentId = params.id || `ATT-${Date.now().toString(36).toUpperCase()}`;
     const now = new Date().toISOString();
 
-    // Insert into Supabase attachments table
     const { error: dbError } = await supabase.from("attachments").upsert({
       id: attachmentId,
       complaint_id: params.complaint_id,
@@ -113,16 +105,8 @@ export async function uploadAndSyncAttachmentToSupabase(params: {
   }
 }
 
-/**
- * Upsert a complaint record to Supabase Cloud PostgreSQL.
- */
 export async function syncComplaintToSupabase(complaint: any): Promise<{ success: boolean; error?: string }> {
-  if (!supabase) {
-    return { success: false, error: "Supabase not configured" };
-  }
-
   try {
-    // Format values strictly matching Postgres types
     const payload: any = {
       id: complaint.id,
       complaint_number: complaint.complaint_number,
@@ -163,33 +147,23 @@ export async function syncComplaintToSupabase(complaint: any): Promise<{ success
       corrective_action: complaint.corrective_action || null,
       preventive_action: complaint.preventive_action || null,
       target_resolution_hours: complaint.target_resolution_hours || 72,
-      is_overdue: complaint.is_overdue ? 1 : 0, // Ensure integer (0 or 1)
+      is_overdue: complaint.is_overdue ? 1 : 0,
       created_at: complaint.created_at || new Date().toISOString(),
       updated_at: complaint.updated_at || new Date().toISOString(),
     };
 
     const { error } = await supabase.from("complaints").upsert(payload, { onConflict: "id" });
-
     if (error) {
-      console.warn("Supabase complaint upsert error:", error.message, error.details);
+      console.warn("Supabase complaint upsert error:", error.message);
       return { success: false, error: error.message };
     }
-
     return { success: true };
   } catch (err: any) {
-    console.error("syncComplaintToSupabase exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/**
- * Upsert a timeline entry to Supabase.
- */
 export async function syncTimelineToSupabase(entry: any): Promise<{ success: boolean; error?: string }> {
-  if (!supabase) {
-    return { success: false, error: "Supabase not configured" };
-  }
-
   try {
     const payload = {
       complaint_id: entry.complaint_id,
@@ -214,34 +188,20 @@ export async function syncTimelineToSupabase(entry: any): Promise<{ success: boo
   }
 }
 
-/**
- * Upsert a QC Batch Report to Supabase.
- */
 export async function syncQcBatchToSupabase(batch: any): Promise<{ success: boolean; error?: string }> {
-  if (!supabase) {
-    return { success: false, error: "Supabase not configured" };
-  }
-
   try {
     const payload = {
-      id: batch.id || undefined,
       batch_number: batch.batch_number,
       product_name: batch.product_name,
-      product_code: batch.product_code || null,
-      production_line: batch.production_line || null,
+      viscosity: batch.viscosity || null,
+      colour: batch.colour || null,
+      solids: batch.solids || null,
+      qc_status: batch.qc_status || "Passed",
       manufacturing_date: batch.manufacturing_date || null,
       expiry_date: batch.expiry_date || null,
-      viscosity_reading: batch.viscosity_reading || null,
-      solid_content: batch.solid_content || null,
-      specific_gravity: batch.specific_gravity || null,
-      ph_value: batch.ph_value || null,
-      colour_appearance: batch.colour_appearance || null,
-      tack_free_time: batch.tack_free_time || null,
-      qc_status: batch.qc_status || "PASSED",
-      tested_by: batch.tested_by || "QC Analyst",
-      tested_date: batch.tested_date || new Date().toISOString(),
+      tested_by: batch.tested_by || "Dr. Chioma Okonkwo (QC)",
+      testing_date: batch.testing_date || new Date().toISOString().split("T")[0],
       remarks: batch.remarks || null,
-      coa_pdf_url: batch.coa_pdf_url || null,
       created_at: batch.created_at || new Date().toISOString(),
       updated_at: batch.updated_at || new Date().toISOString(),
     };
@@ -254,141 +214,5 @@ export async function syncQcBatchToSupabase(batch: any): Promise<{ success: bool
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
-  }
-}
-
-/**
- * Sync ALL local records (Complaints, Attachments, Timeline, QC Batches) from local SQLite to Supabase Cloud.
- */
-export async function syncAllLocalDataToSupabase(getDbFn: () => any): Promise<{
-  success: boolean;
-  complaintsSynced: number;
-  attachmentsSynced: number;
-  timelineSynced: number;
-  qcBatchesSynced: number;
-  errors: string[];
-}> {
-  if (!supabase) {
-    return {
-      success: false,
-      complaintsSynced: 0,
-      attachmentsSynced: 0,
-      timelineSynced: 0,
-      qcBatchesSynced: 0,
-      errors: ["Supabase credentials not configured in environment variables."],
-    };
-  }
-
-  const errors: string[] = [];
-  let complaintsSynced = 0;
-  let attachmentsSynced = 0;
-  let timelineSynced = 0;
-  let qcBatchesSynced = 0;
-
-  try {
-    const db = getDbFn();
-
-    // 1. Sync Complaints
-    const complaints = db.prepare("SELECT * FROM complaints").all() as any[];
-    for (const c of complaints) {
-      const res = await syncComplaintToSupabase(c);
-      if (res.success) {
-        complaintsSynced++;
-      } else {
-        errors.push(`Complaint ${c.complaint_number}: ${res.error}`);
-      }
-    }
-
-    // 2. Sync Timeline
-    const timeline = db.prepare("SELECT * FROM complaint_timeline").all() as any[];
-    for (const t of timeline) {
-      const res = await syncTimelineToSupabase(t);
-      if (res.success) {
-        timelineSynced++;
-      }
-    }
-
-    // 3. Sync Attachments (Including uploading physical files from disk to Supabase Storage!)
-    const attachments = db.prepare("SELECT * FROM attachments").all() as any[];
-    for (const a of attachments) {
-      try {
-        let fileBuffer: Buffer | null = null;
-        if (a.stored_path && fs.existsSync(a.stored_path)) {
-          fileBuffer = fs.readFileSync(a.stored_path);
-        } else {
-          // Check public/uploads fallback
-          const fallbackPath = path.join(process.cwd(), "public", "uploads", a.complaint_id, path.basename(a.stored_path || a.file_name));
-          if (fs.existsSync(fallbackPath)) {
-            fileBuffer = fs.readFileSync(fallbackPath);
-          }
-        }
-
-        if (fileBuffer) {
-          const res = await uploadAndSyncAttachmentToSupabase({
-            id: a.id,
-            complaint_id: a.complaint_id,
-            file_name: a.file_name,
-            file_buffer: fileBuffer,
-            file_type: a.file_type || "application/octet-stream",
-            file_size: a.file_size || fileBuffer.length,
-            attachment_category: a.attachment_category,
-            uploaded_by: a.uploaded_by,
-          });
-          if (res.success) {
-            attachmentsSynced++;
-          } else {
-            errors.push(`Attachment ${a.file_name}: ${res.error}`);
-          }
-        } else {
-          // Insert metadata row if file binary isn't on disk
-          const { error } = await supabase.from("attachments").upsert({
-            id: a.id,
-            complaint_id: a.complaint_id,
-            file_name: a.file_name,
-            stored_path: a.stored_path || "",
-            file_url: a.file_url || "",
-            file_type: a.file_type || "application/octet-stream",
-            file_size: a.file_size || 0,
-            attachment_category: a.attachment_category || "customer_evidence",
-            uploaded_by: a.uploaded_by || "User",
-            created_at: a.created_at || new Date().toISOString(),
-          });
-          if (!error) attachmentsSynced++;
-        }
-      } catch (attErr: any) {
-        errors.push(`Attachment ${a.file_name}: ${attErr.message}`);
-      }
-    }
-
-    // 4. Sync QC Batch Reports
-    try {
-      const qcBatches = db.prepare("SELECT * FROM qc_batch_reports").all() as any[];
-      for (const q of qcBatches) {
-        const res = await syncQcBatchToSupabase(q);
-        if (res.success) {
-          qcBatchesSynced++;
-        }
-      }
-    } catch (e: any) {
-      console.warn("QC batches table read in SQLite:", e.message);
-    }
-
-    return {
-      success: errors.length === 0 || complaintsSynced > 0,
-      complaintsSynced,
-      attachmentsSynced,
-      timelineSynced,
-      qcBatchesSynced,
-      errors,
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      complaintsSynced,
-      attachmentsSynced,
-      timelineSynced,
-      qcBatchesSynced,
-      errors: [err.message],
-    };
   }
 }
