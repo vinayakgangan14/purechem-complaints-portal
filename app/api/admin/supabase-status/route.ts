@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured, syncAllLocalDataToSupabase } from "@/lib/db/supabase";
 import { getDb } from "@/lib/db";
