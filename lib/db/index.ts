@@ -7,7 +7,18 @@ let DatabaseClass: any = null;
 function getDatabaseClass() {
   if (DatabaseClass) return DatabaseClass;
 
-  // 1. Try better-sqlite3 (compatible across Node 18, 20, 22, 24 on Render, Docker, Linux, Windows)
+  // 1. Native built-in node:sqlite (Node.js 22+ standard, zero native addon issues, 100% stable)
+  try {
+    const sqliteModule = require("node:sqlite");
+    if (sqliteModule && sqliteModule.DatabaseSync) {
+      DatabaseClass = sqliteModule.DatabaseSync;
+      return DatabaseClass;
+    }
+  } catch (e) {
+    // continue to fallback
+  }
+
+  // 2. Fallback to better-sqlite3 for Node < 22
   try {
     const BetterSqlite = require("better-sqlite3");
     if (BetterSqlite) {
@@ -16,17 +27,6 @@ function getDatabaseClass() {
     }
   } catch (e) {
     // continue to fallback
-  }
-
-  // 2. Try native node:sqlite (built-in in Node.js 22+)
-  try {
-    const sqliteModule = require("node:sqlite");
-    if (sqliteModule && sqliteModule.DatabaseSync) {
-      DatabaseClass = sqliteModule.DatabaseSync;
-      return DatabaseClass;
-    }
-  } catch (e) {
-    // continue
   }
 
   throw new Error(

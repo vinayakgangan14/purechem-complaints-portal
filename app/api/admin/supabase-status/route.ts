@@ -53,18 +53,62 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Test real connection to Supabase
-    const { count: compCount, error: compErr } = await supabase
-      .from("complaints")
-      .select("*", { count: "exact", head: true });
+    // Test real connection to Supabase with 4s timeout
+    const timeoutPromise = new Promise<{ isTimeout: true }>((resolve) =>
+      setTimeout(() => resolve({ isTimeout: true }), 4000)
+    );
 
-    const { count: qcCount, error: qcErr } = await supabase
-      .from("qc_batch_reports")
-      .select("*", { count: "exact", head: true });
+    const testQuery = async () => {
+      try {
+        const [compRes, qcRes, attRes] = await Promise.all([
+          supabase.from("complaints").select("*", { count: "exact", head: true }),
+          supabase.from("qc_batch_reports").select("*", { count: "exact", head: true }),
+          supabase.from("attachments").select("*", { count: "exact", head: true }),
+        ]);
+        return { isTimeout: false, compRes, qcRes, attRes };
+      } catch (err: any) {
+        return { isTimeout: false, error: err.message };
+      }
+    };
 
-    const { count: attCount, error: attErr } = await supabase
-      .from("attachments")
-      .select("*", { count: "exact", head: true });
+    const outcome = await Promise.race([testQuery(), timeoutPromise]);
+
+    if (outcome.isTimeout) {
+      return NextResponse.json({
+        success: false,
+        configured: true,
+        connected: false,
+        error: "Supabase connection timed out after 4 seconds.",
+        message: "Could not reach Supabase endpoint within 4 seconds. Please verify your Project URL.",
+        envStatus: {
+          NEXT_PUBLIC_SUPABASE_URL: supabaseUrl ? "Set" : "Missing",
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: hasAnonKey ? "Set" : "Missing",
+          SUPABASE_SERVICE_ROLE_KEY: hasServiceKey ? "Set" : "Missing",
+        },
+      });
+    }
+
+    const { compRes, qcRes, attRes, error: fetchErr } = outcome as any;
+
+    if (fetchErr) {
+      return NextResponse.json({
+        success: false,
+        configured: true,
+        connected: false,
+        error: fetchErr,
+        message: "Failed to connect to Supabase: " + fetchErr,
+        envStatus: {
+          NEXT_PUBLIC_SUPABASE_URL: supabaseUrl ? "Set" : "Missing",
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: hasAnonKey ? "Set" : "Missing",
+          SUPABASE_SERVICE_ROLE_KEY: hasServiceKey ? "Set" : "Missing",
+        },
+      });
+    }
+
+    const compCount = compRes?.count;
+    const compErr = compRes?.error;
+    const qcCount = qcRes?.count;
+    const attCount = attRes?.count;
 
     if (compErr) {
       return NextResponse.json({
