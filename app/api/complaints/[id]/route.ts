@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { calculateDuration, isComplaintOverdue, SLA_TARGETS } from "@/lib/timer/resolution";
 import { sendNotificationEmail } from "@/lib/email/dispatcher";
+import { isSupabaseConfigured, syncComplaintToSupabase, syncTimelineToSupabase } from "@/lib/db/supabase";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -247,6 +248,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const updated = db.prepare("SELECT * FROM complaints WHERE id = ?").get(existing.id);
+
+    if (isSupabaseConfigured && updated) {
+      syncComplaintToSupabase(updated).catch((e) => console.warn("Supabase complaint update:", e.message));
+      syncTimelineToSupabase({
+        complaint_id: existing.id,
+        action: actionLabel,
+        old_status: oldStatus,
+        new_status: newStatus,
+        comment: comment || `Updated to ${newStatus}`,
+        is_internal_only: false,
+        performed_by: performed_by || "Purechem Staff",
+        performed_by_role: performed_by_role || "Staff",
+        created_at: now,
+      }).catch((e) => console.warn("Supabase timeline update:", e.message));
+    }
 
     return NextResponse.json({
       success: true,

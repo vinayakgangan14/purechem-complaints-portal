@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, isSupabaseConfigured } from "@/lib/db/supabase";
+import { supabase, isSupabaseConfigured, syncAllLocalDataToSupabase } from "@/lib/db/supabase";
 import { getDb } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
@@ -11,12 +11,15 @@ export async function GET(req: NextRequest) {
     // Check local database counts as baseline
     let localComplaintsCount = 0;
     let localQcCount = 0;
+    let localAttachmentsCount = 0;
     try {
       const db = getDb();
       const compRow = db.prepare("SELECT COUNT(*) as c FROM complaints").get() as any;
       const qcRow = db.prepare("SELECT COUNT(*) as c FROM qc_batch_reports").get() as any;
+      const attRow = db.prepare("SELECT COUNT(*) as c FROM attachments").get() as any;
       localComplaintsCount = compRow?.c || 0;
       localQcCount = qcRow?.c || 0;
+      localAttachmentsCount = attRow?.c || 0;
     } catch (e: any) {
       console.warn("Local SQLite read:", e.message);
     }
@@ -30,7 +33,7 @@ export async function GET(req: NextRequest) {
           step1: "Create a project on https://supabase.com",
           step2: "Go to Project Settings -> API in your Supabase dashboard.",
           step3: "Copy Project URL, anon public key, and service_role secret key.",
-          step4: "Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY to your Vercel or Render Environment Variables.",
+          step4: "Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY to your .env.local file or Vercel / Render Environment Variables.",
           step5: "Run the schema SQL in your Supabase SQL Editor from supabase-schema.sql in the project root.",
         },
         envStatus: {
@@ -42,18 +45,23 @@ export async function GET(req: NextRequest) {
           status: "Active (Local SQLite)",
           complaints_recorded: localComplaintsCount,
           qc_batches_recorded: localQcCount,
+          attachments_recorded: localAttachmentsCount,
         },
       });
     }
 
     // Test real connection to Supabase
-    const { data: compData, error: compErr } = await supabase
+    const { count: compCount, error: compErr } = await supabase
       .from("complaints")
-      .select("id", { count: "exact", head: true });
+      .select("*", { count: "exact", head: true });
 
-    const { data: qcData, error: qcErr } = await supabase
+    const { count: qcCount, error: qcErr } = await supabase
       .from("qc_batch_reports")
-      .select("id", { count: "exact", head: true });
+      .select("*", { count: "exact", head: true });
+
+    const { count: attCount, error: attErr } = await supabase
+      .from("attachments")
+      .select("*", { count: "exact", head: true });
 
     if (compErr) {
       return NextResponse.json({
@@ -79,12 +87,40 @@ export async function GET(req: NextRequest) {
       connected: true,
       message: "Supabase Cloud Database is actively connected and collecting data!",
       dataCollection: {
-        complaints_in_supabase: compData?.length ?? 0,
-        qc_batches_in_supabase: qcData?.length ?? 0,
+        complaints_in_supabase: compCount ?? 0,
+        qc_batches_in_supabase: qcCount ?? 0,
+        attachments_in_supabase: attCount ?? 0,
         local_complaints: localComplaintsCount,
         local_qc_batches: localQcCount,
+        local_attachments: localAttachmentsCount,
       },
       supabaseUrl,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    if (!isSupabaseConfigured) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Supabase is not configured yet. Please configure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY first.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await syncAllLocalDataToSupabase(getDb);
+
+    return NextResponse.json({
+      success: result.success,
+      message: result.success
+        ? `Successfully synchronized ${result.complaintsSynced} complaints, ${result.attachmentsSynced} attachments, ${result.timelineSynced} timeline logs, and ${result.qcBatchesSynced} QC batches to Supabase!`
+        : "Sync completed with warnings.",
+      details: result,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

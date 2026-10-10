@@ -277,11 +277,30 @@ INSERT INTO users (id, name, email, phone, company, role, customer_type) VALUES
   ('USR-005', 'Mr. Kunle Sanusi', 'management@purechemmanufacturing.com', '+2348099887766', 'Purechem Executive Board', 'management', 'Other')
 ON CONFLICT (email) DO NOTHING;
 
--- 20. SUPABASE ROW LEVEL SECURITY (RLS) POLICIES
+-- 20. QC BATCH REPORTS TABLE
+CREATE TABLE IF NOT EXISTS qc_batch_reports (
+  id BIGSERIAL PRIMARY KEY,
+  batch_number TEXT NOT NULL UNIQUE,
+  product_name TEXT NOT NULL,
+  viscosity TEXT DEFAULT 'Standard',
+  colour TEXT DEFAULT 'Standard',
+  solids TEXT DEFAULT 'Standard',
+  qc_status TEXT DEFAULT 'Passed',
+  manufacturing_date TEXT,
+  expiry_date TEXT,
+  tested_by TEXT DEFAULT 'Dr. Chioma Okonkwo (QC)',
+  testing_date TEXT,
+  remarks TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 21. SUPABASE ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE complaints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE complaint_timeline ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE qc_batch_reports ENABLE ROW LEVEL SECURITY;
 
 -- Allow public to INSERT new complaints
 CREATE POLICY "Public complaint registration" ON complaints
@@ -295,14 +314,45 @@ CREATE POLICY "Public complaint tracking" ON complaints
 CREATE POLICY "Full access for authenticated or service role" ON complaints
   FOR ALL USING (true);
 
+-- Timeline policies
 CREATE POLICY "Public timeline read" ON complaint_timeline
   FOR SELECT USING (is_internal_only = FALSE);
 
 CREATE POLICY "Staff timeline full" ON complaint_timeline
   FOR ALL USING (true);
 
+-- Attachments policies (allow uploading evidence and reading attachments)
+CREATE POLICY "Public attachment insert" ON attachments
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Public attachment select" ON attachments
+  FOR SELECT USING (true);
+
+CREATE POLICY "Public attachment update" ON attachments
+  FOR UPDATE USING (true);
+
+-- Feedback policies
 CREATE POLICY "Public feedback insert" ON feedback
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Feedback select" ON feedback
   FOR SELECT USING (true);
+
+-- QC Batches policies
+CREATE POLICY "QC batch reports full access" ON qc_batch_reports
+  FOR ALL USING (true);
+
+-- 22. SUPABASE STORAGE BUCKET FOR COMPLAINT ATTACHMENTS & PHOTOS
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('complaint-attachments', 'complaint-attachments', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Storage policies so anyone can view evidence images and upload photos
+CREATE POLICY "Public read attachments bucket" ON storage.objects
+  FOR SELECT USING (bucket_id = 'complaint-attachments');
+
+CREATE POLICY "Public upload attachments bucket" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'complaint-attachments');
+
+CREATE POLICY "Public update attachments bucket" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'complaint-attachments');

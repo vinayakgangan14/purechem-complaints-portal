@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { isSupabaseConfigured, uploadAndSyncAttachmentToSupabase, syncTimelineToSupabase } from "@/lib/db/supabase";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -30,23 +31,50 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadsDir = path.join(process.cwd(), "public", "uploads", complaint.id);
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
     // Clean filename and create unique storage name
     const ext = path.extname(file.name) || ".bin";
     const cleanBase = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
     const uniqueFileName = `${Date.now()}-${cleanBase}${ext}`;
-    const destinationPath = path.join(uploadsDir, uniqueFileName);
-
-    fs.writeFileSync(destinationPath, buffer);
-
-    const fileUrl = `/uploads/${complaint.id}/${uniqueFileName}`;
     const attachmentId = `ATT-${Date.now().toString(36).toUpperCase()}`;
     const now = new Date().toISOString();
 
+    let destinationPath = "";
+    let fileUrl = `/uploads/${complaint.id}/${uniqueFileName}`;
+
+    // 1. Try local disk write (works on persistent servers like Render and local dev)
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads", complaint.id);
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      destinationPath = path.join(uploadsDir, uniqueFileName);
+      fs.writeFileSync(destinationPath, buffer);
+    } catch (diskErr: any) {
+      console.warn("Local disk write skipped (likely serverless read-only):", diskErr.message);
+    }
+
+    // 2. Dual-upload to Supabase Storage & Supabase attachments table if configured
+    if (isSupabaseConfigured) {
+      try {
+        const sbRes = await uploadAndSyncAttachmentToSupabase({
+          id: attachmentId,
+          complaint_id: complaint.id,
+          file_name: file.name,
+          file_buffer: buffer,
+          file_type: file.type || "application/octet-stream",
+          file_size: file.size,
+          attachment_category: category,
+          uploaded_by: uploadedBy,
+        });
+        if (sbRes.success && sbRes.file_url) {
+          fileUrl = sbRes.file_url; // Use CDN URL if available
+        }
+      } catch (sbErr: any) {
+        console.warn("Supabase Storage attachment upload warning:", sbErr.message);
+      }
+    }
+
+    // 3. Save into local SQLite for fast local retrieval
     db.prepare(`
       INSERT INTO attachments (
         id, complaint_id, file_name, stored_path, file_url, file_type, file_size, attachment_category, uploaded_by, created_at
@@ -55,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       attachmentId,
       complaint.id,
       file.name,
-      destinationPath,
+      destinationPath || fileUrl,
       fileUrl,
       file.type || "application/octet-stream",
       file.size,
@@ -64,7 +92,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       now
     );
 
-    // Timeline event
+    // 4. Timeline event
+    const timelineComment = `Uploaded document: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     db.prepare(`
       INSERT INTO complaint_timeline (
         complaint_id, action, old_status, new_status, comment, is_internal_only, performed_by, performed_by_role, created_at
@@ -73,10 +102,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       complaint.id,
       complaint.status,
       complaint.status,
-      `Uploaded document: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+      timelineComment,
       uploadedBy,
       now
     );
+
+    if (isSupabaseConfigured) {
+      syncTimelineToSupabase({
+        complaint_id: complaint.id,
+        action: "Evidence File Uploaded",
+        old_status: complaint.status,
+        new_status: complaint.status,
+        comment: timelineComment,
+        is_internal_only: false,
+        performed_by: uploadedBy,
+        performed_by_role: "User",
+        created_at: now,
+      }).catch((e) => console.warn("Supabase timeline warning:", e.message));
+    }
 
     const newAttachment = db.prepare("SELECT * FROM attachments WHERE id = ?").get(attachmentId);
 

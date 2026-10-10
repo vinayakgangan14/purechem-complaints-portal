@@ -16,17 +16,54 @@ import {
   AlertOctagon,
   RefreshCw,
   Search,
+  Cloud,
+  Database,
+  UploadCloud,
+  Check,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const [reportData, setReportData] = useState<any>(null);
   const [batchAlerts, setBatchAlerts] = useState<any[]>([]);
   const [recentComplaints, setRecentComplaints] = useState<any[]>([]);
+  const [supabaseStatus, setSupabaseStatus] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboard();
+    loadSupabaseStatus();
   }, []);
+
+  const loadSupabaseStatus = async () => {
+    try {
+      const res = await fetch("/api/admin/supabase-status");
+      const data = await res.json();
+      setSupabaseStatus(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSyncSupabase = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/admin/supabase-status", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setSyncMessage(data.message);
+        await loadSupabaseStatus();
+      } else {
+        setSyncMessage(`Sync Alert: ${data.error || "Unable to sync"}`);
+      }
+    } catch (e: any) {
+      setSyncMessage(`Sync Error: ${e.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -97,6 +134,86 @@ export default function AdminDashboardPage() {
           >
             <PlusCircle className="w-4 h-4" /> + Raise Complaint
           </Link>
+        </div>
+      </div>
+
+      {/* SUPABASE CLOUD DATABASE & ATTACHMENTS SYNC STATUS CARD */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`p-3 rounded-xl shrink-0 ${supabaseStatus?.configured ? "bg-emerald-50 text-emerald-600" : "bg-sky-50 text-purechem-blue"}`}>
+              <Cloud className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-base">
+                  Supabase Cloud Database & Storage
+                </h3>
+                {supabaseStatus?.configured ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Live & Connected
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                    Local SQLite Mode
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {supabaseStatus?.configured
+                  ? "Every new complaint and image attachment is automatically synced to your Supabase PostgreSQL tables and Storage bucket."
+                  : "Currently storing data safely on local disk (data/purechem.db). Configure Supabase in .env.local to collect data & attachments in the cloud."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {supabaseStatus?.configured ? (
+              <button
+                onClick={handleSyncSupabase}
+                disabled={syncing}
+                className="px-4 py-2.5 bg-purechem-blue hover:bg-purechem-blue-dark text-white rounded-xl text-xs font-bold shadow flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                <UploadCloud className="w-4 h-4" />
+                {syncing ? "Syncing to Cloud..." : "Sync Local Data to Supabase"}
+              </button>
+            ) : (
+              <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+                Set credentials in <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">.env.local</code> to activate
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sync message alert if any */}
+        {syncMessage && (
+          <div className={`p-3 rounded-xl text-xs font-medium ${syncMessage.startsWith("Error") || syncMessage.startsWith("Sync Alert") ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-800 border border-emerald-200"}`}>
+            {syncMessage}
+          </div>
+        )}
+
+        {/* Metric counts comparison */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Complaints (Local)</span>
+            <span className="text-lg font-black text-slate-900">{supabaseStatus?.localDatabase?.complaints_recorded ?? supabaseStatus?.dataCollection?.local_complaints ?? 0}</span>
+          </div>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Complaints (Supabase)</span>
+            <span className={`text-lg font-black ${supabaseStatus?.configured ? "text-emerald-600" : "text-slate-400"}`}>
+              {supabaseStatus?.dataCollection?.complaints_in_supabase ?? 0}
+            </span>
+          </div>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Attachments (Local)</span>
+            <span className="text-lg font-black text-slate-900">{supabaseStatus?.localDatabase?.attachments_recorded ?? supabaseStatus?.dataCollection?.local_attachments ?? 0}</span>
+          </div>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Attachments (Supabase)</span>
+            <span className={`text-lg font-black ${supabaseStatus?.configured ? "text-emerald-600" : "text-slate-400"}`}>
+              {supabaseStatus?.dataCollection?.attachments_in_supabase ?? 0}
+            </span>
+          </div>
         </div>
       </div>
 

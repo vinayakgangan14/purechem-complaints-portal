@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { isSupabaseConfigured, syncTimelineToSupabase } from "@/lib/db/supabase";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -38,6 +39,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       staffRole,
       now
     );
+
+    if (isSupabaseConfigured) {
+      syncTimelineToSupabase({
+        complaint_id: complaint.id,
+        action,
+        old_status: complaint.status,
+        new_status: complaint.status,
+        comment: comment.trim(),
+        is_internal_only: Boolean(isInternal),
+        performed_by: staffName,
+        performed_by_role: staffRole,
+        created_at: now,
+      }).catch((e) => console.warn("Supabase timeline warning:", e.message));
+    }
 
     const inserted = db.prepare("SELECT * FROM complaint_timeline WHERE complaint_id = ? ORDER BY id DESC LIMIT 1").get(complaint.id);
 
