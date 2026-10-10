@@ -39,32 +39,41 @@ export default function HomePage() {
 
   return (
     <div className="space-y-16 pb-16">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-purechem-navy via-[#0c2f54] to-purechem-navy-dark text-white pt-16 pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      {/* Hero Section: Clean White & Purechem Blue */}
+      <section className="relative bg-gradient-to-b from-sky-50 via-white to-slate-50 text-slate-900 pt-12 pb-24 px-4 sm:px-6 lg:px-8 border-b border-sky-100 overflow-hidden">
         {/* Subtle background decorative shapes */}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#FF6900_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#0084C7_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
-        <div className="relative max-w-5xl mx-auto text-center space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-slate-200 text-xs sm:text-sm font-medium backdrop-blur-sm border border-white/10">
-            <ShieldCheck className="w-4 h-4 text-purechem-orange" />
-            <span>Purechem Manufacturing Limited • ISO 9001:2008 Certified</span>
+        <div className="relative max-w-5xl mx-auto text-center space-y-6">
+          {/* Logo Spotlight */}
+          <div className="flex justify-center mb-2">
+            <img
+              src="/logo.png"
+              alt="Purechem Manufacturing Limited"
+              className="h-14 sm:h-20 w-auto object-contain drop-shadow-sm"
+            />
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Have a problem with a <br className="hidden sm:inline" />
-            <span className="text-purechem-orange underline decoration-purechem-orange/40">Purechem product?</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-100 text-[#0084C7] text-xs sm:text-sm font-extrabold border border-sky-200 shadow-sm">
+            <ShieldCheck className="w-4 h-4 text-[#0084C7]" />
+            <span>Purechem Manufacturing Limited • ISO 9001:2015 Certified Quality System</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-tight">
+            Customer Complaint & <br className="hidden sm:inline" />
+            <span className="text-[#0084C7]">Quality Resolution Portal</span>
           </h1>
 
-          <p className="text-base sm:text-xl text-slate-300 max-w-2xl mx-auto font-light leading-relaxed">
-            Welcome to the official Purechem Quality & Customer Support Portal. We are committed to prompt,
-            transparent, and precise resolution across all Nigerian states.
+          <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto font-normal leading-relaxed">
+            Welcome to the official Purechem Quality & Customer Support Desk. Report issues,
+            track investigation timers in real time, and receive rapid resolution across all Nigerian operations.
           </p>
 
           {/* Primary 3 Core Pillar Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-3.5 pt-4">
             <Link
               href="/complaint/new"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-purechem-orange hover:bg-purechem-orange-dark text-white shadow-lg hover:shadow-purechem-orange/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-black bg-[#0084C7] hover:bg-[#006CA6] text-white shadow-lg hover:shadow-sky-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <PlusCircle className="w-5 h-5" />
               1. RAISE COMPLAINT
@@ -72,24 +81,24 @@ export default function HomePage() {
 
             <Link
               href="/admin/resolve"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-sky-50 hover:bg-sky-100 text-[#0084C7] border-2 border-[#0084C7] shadow-md transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+              <CheckCircle2 className="w-5 h-5 text-[#0084C7]" />
               2. RESOLUTION DESK
             </Link>
 
             <Link
               href="/admin"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold bg-slate-800 hover:bg-slate-900 text-white shadow-md transition-all transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              <ShieldCheck className="w-5 h-5 text-blue-300" />
+              <ShieldCheck className="w-5 h-5 text-sky-400" />
               3. ADMIN & ANALYTICS
             </Link>
           </div>
 
           {/* Quick Notice */}
-          <p className="text-xs text-slate-400">
-            Frictionless portal: Raise complaints directly, resolve issues with CAPA timers, or view the executive analytics dashboard.
+          <p className="text-xs text-slate-500 font-medium">
+            Frictionless portal: Raise complaints directly with phone number & email, track ISO SLA turnaround, or log daily QC batch tests.
           </p>
         </div>
       </section>
@@ -219,22 +228,22 @@ export default function HomePage() {
 
       {/* QR Code Feature Spotlight (Section 39) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-r from-slate-900 to-purechem-navy text-white rounded-2xl p-8 sm:p-12 shadow-lg">
+        <div className="bg-gradient-to-r from-[#0084C7] to-[#006CA6] text-white rounded-2xl p-8 sm:p-12 shadow-lg">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-8 space-y-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-purechem-orange/20 text-purechem-orange text-xs font-semibold">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-white/20 text-white text-xs font-bold">
                 <QrCode className="w-4 h-4" /> Packaging QR Code Integration
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Scan & Raise Directly From Drum or Bucket
               </h2>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <p className="text-sm text-sky-100 leading-relaxed">
                 Found an issue on site? Purechem product labels feature quick QR codes. Scanning the code on TOPGIT PVC cans, TOP BOND buckets, or resin drums automatically pre-fills the exact product name, pack size, and batch number into your complaint form!
               </p>
               <div className="flex flex-wrap gap-4 pt-2">
                 <Link
                   href="/complaint/new?product_code=PCM-PVC-003&batch=B260901"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-purechem-orange hover:bg-purechem-orange-dark text-white rounded-lg text-sm font-bold shadow transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#0084C7] hover:bg-sky-50 rounded-xl text-sm font-extrabold shadow transition-colors"
                 >
                   <QrCode className="w-4 h-4" /> Simulate QR Scan Pre-Fill
                 </Link>

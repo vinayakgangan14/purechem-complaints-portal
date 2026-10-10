@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 
 let DatabaseSyncClass: any = null;
 try {
@@ -24,17 +25,33 @@ export function getDb(): any {
       DatabaseSyncClass = sqliteModule.DatabaseSync;
     } catch (e) {
       throw new Error(
-        "node:sqlite is only available on Node.js 22+. Please set NODE_VERSION=22.12.0 in Render environment variables."
+        "node:sqlite is only available on Node.js 22+. In Render: Go to your service -> Environment -> add NODE_VERSION=22.12.0. Or configure Supabase in your environment variables for cloud database storage."
       );
     }
   }
 
-  const dbDir = path.join(process.cwd(), "data");
+  // Detect serverless environment (Vercel Lambda) where root disk is read-only
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const dbDir = isServerless ? path.join(os.tmpdir(), "purechem-data") : path.join(process.cwd(), "data");
+
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
   const dbPath = path.join(dbDir, "purechem.db");
+
+  // On Vercel, if seed purechem.db exists in repo, copy it to /tmp on cold boot
+  if (isServerless && !fs.existsSync(dbPath)) {
+    const sourceDbPath = path.join(process.cwd(), "data", "purechem.db");
+    if (fs.existsSync(sourceDbPath)) {
+      try {
+        fs.copyFileSync(sourceDbPath, dbPath);
+      } catch (err) {
+        console.warn("Could not copy initial db to /tmp, will initialize fresh:", err);
+      }
+    }
+  }
+
   const db = new DatabaseSyncClass(dbPath);
 
   // Enable WAL mode & foreign keys for high concurrency & integrity

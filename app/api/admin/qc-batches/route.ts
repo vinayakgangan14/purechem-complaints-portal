@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { supabase, isSupabaseConfigured } from "@/lib/db/supabase";
 
 export async function GET(req: NextRequest) {
   try {
@@ -108,6 +109,27 @@ export async function POST(req: NextRequest) {
     );
 
     const saved = db.prepare("SELECT * FROM qc_batch_reports WHERE batch_number = ?").get(cleanBatch);
+
+    // Dual-write to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from("qc_batch_reports").upsert({
+          product_name: product_name.trim(),
+          batch_number: cleanBatch,
+          viscosity: viscosity?.trim() || "Standard",
+          colour: colour?.trim() || "Standard",
+          solids: solids?.trim() || "Standard",
+          qc_status: qc_status || "Passed",
+          manufacturing_date: manufacturing_date || null,
+          expiry_date: expiry_date || null,
+          tested_by: tested_by?.trim() || "Dr. Chioma Okonkwo (QC)",
+          testing_date: testDate,
+          remarks: remarks?.trim() || "Daily factory test verified.",
+        }, { onConflict: "batch_number" });
+      } catch (sbErr: any) {
+        console.warn("Supabase QC dual-write:", sbErr.message);
+      }
+    }
 
     return NextResponse.json({
       success: true,

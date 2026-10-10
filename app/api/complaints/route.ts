@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { calculateDuration, isComplaintOverdue, SLA_TARGETS } from "@/lib/timer/resolution";
 import { sendNotificationEmail } from "@/lib/email/dispatcher";
+import { supabase, isSupabaseConfigured } from "@/lib/db/supabase";
 
 // Generate unique Complaint ID: PCM-NG-YYYYMMDD-XXXX
 function generateComplaintNumber(db: any): string {
@@ -244,6 +245,54 @@ export async function POST(req: NextRequest) {
         complaintDate: now,
       },
     });
+
+    // Dual-write to Supabase Cloud if configured
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from("complaints").insert({
+          id: complaintId,
+          complaint_number: complaintNumber,
+          customer_name: customer_name.trim(),
+          customer_company: customer_company ? customer_company.trim() : "",
+          customer_email: customer_email.trim(),
+          customer_phone: customer_phone.trim(),
+          customer_type: customer_type || "Customer",
+          raised_by_role: raised_by_role || "Customer",
+          raised_by_name: raised_by_name || customer_name.trim(),
+          product_name: product_name.trim(),
+          product_category: product_category || "Adhesives",
+          product_code: product_code || "",
+          batch_number: batch_number ? batch_number.trim() : "",
+          manufacturing_date: manufacturing_date || null,
+          expiry_date: expiry_date || null,
+          pack_size: pack_size || "",
+          quantity_purchased: quantity_purchased || "",
+          invoice_number: invoice_number || "",
+          purchase_date: purchase_date || null,
+          complaint_type,
+          customer_priority: priority,
+          admin_priority: "Medium",
+          description: description.trim(),
+          status: "OPEN",
+          complaint_open_time: now,
+          target_resolution_hours: targetHours,
+          is_overdue: false,
+        });
+
+        await supabase.from("complaint_timeline").insert({
+          complaint_id: complaintId,
+          action: "Complaint Registered",
+          old_status: null,
+          new_status: "OPEN",
+          comment: `Complaint ${complaintNumber} registered into Purechem Quality System.`,
+          is_internal_only: false,
+          performed_by: creatorLabel,
+          performed_by_role: raised_by_role || "Customer",
+        });
+      } catch (sbErr: any) {
+        console.warn("Supabase dual-write log:", sbErr.message);
+      }
+    }
 
     const newRecord = db.prepare("SELECT * FROM complaints WHERE id = ?").get(complaintId);
 

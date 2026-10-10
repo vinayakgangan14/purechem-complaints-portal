@@ -10,14 +10,18 @@ const config: Config = {
     extend: {
       colors: {
         purechem: {
-          navy: "#0A2540",
-          "navy-dark": "#051626",
-          "navy-light": "#13375c",
-          orange: "#FF6900",
-          "orange-dark": "#D95700",
-          "orange-light": "#FFF2E8",
-          blue: "#0284C7",
-          red: "#CF2E2E",
+          navy: "#0084C7",
+          "navy-dark": "#006CA6",
+          "navy-light": "#E0F2FE",
+          blue: "#0084C7",
+          "blue-dark": "#006CA6",
+          "blue-light": "#E0F2FE",
+          cyan: "#0EA5E9",
+          sky: "#F0F9FF",
+          orange: "#0084C7", // Remap accent to brand blue
+          "orange-dark": "#006CA6",
+          "orange-light": "#E0F2FE",
+          red: "#DC2626",
           "red-light": "#FEE2E2",
           green: "#059669",
           "green-light": "#D1FAE5",

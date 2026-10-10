@@ -586,14 +586,14 @@ export default function ComplaintResolutionDeskPage() {
                     </div>
                   </div>
 
-                  {/* Timer Bar */}
-                  <div className="p-4 rounded-xl bg-slate-900 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  {/* Timer Bar: Purechem Blue Gradient */}
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-[#0084C7] to-[#006CA6] text-white shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-lg bg-white/10 text-purechem-orange">
+                      <div className="p-2.5 rounded-lg bg-white/20 text-white">
                         <Clock className="w-6 h-6" />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                        <div className="text-[11px] font-bold text-sky-100 uppercase tracking-wider">
                           {isResolved ? "Final Resolution Turnaround" : "Active SLA Investigation Timer (WAT)"}
                         </div>
                         <div className="text-lg font-mono font-black mt-0.5">
@@ -604,7 +604,7 @@ export default function ComplaintResolutionDeskPage() {
                       </div>
                     </div>
 
-                    <div className="text-right text-[11px] text-slate-300">
+                    <div className="text-right text-[11px] text-sky-100">
                       <div>Opened: {formatWAT(c.complaint_open_time)}</div>
                       {c.resolved_at && <div>Resolved: {formatWAT(c.resolved_at)}</div>}
                     </div>
