@@ -1,13 +1,26 @@
-import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
+
+let DatabaseCtor;
+try {
+  const betterSqlite = await import("better-sqlite3");
+  DatabaseCtor = betterSqlite.default || betterSqlite;
+} catch (e) {
+  try {
+    const sqliteModule = await import("node:sqlite");
+    DatabaseCtor = sqliteModule.DatabaseSync;
+  } catch (err) {
+    console.error("Neither better-sqlite3 nor node:sqlite is available.");
+    process.exit(1);
+  }
+}
 
 const dbDir = path.join(process.cwd(), "data");
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db = new DatabaseSync(path.join(dbDir, "purechem.db"));
+const db = new DatabaseCtor(path.join(dbDir, "purechem.db"));
 db.exec("PRAGMA journal_mode = WAL;");
 db.exec("PRAGMA foreign_keys = ON;");
 

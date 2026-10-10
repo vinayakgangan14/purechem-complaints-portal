@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['node:sqlite', 'exceljs'],
+    serverComponentsExternalPackages: ['better-sqlite3', 'node:sqlite', 'exceljs'],
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      config.externals = [...(config.externals || []), 'node:sqlite'];
+      config.externals = [...(config.externals || []), 'better-sqlite3', 'node:sqlite'];
     }
     return config;
   },

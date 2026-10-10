@@ -2,14 +2,36 @@ import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
 
-let DatabaseSyncClass: any = null;
-try {
-  // Dynamic require prevents ERR_UNKNOWN_BUILTIN_MODULE during Next.js build page collection
-  // node:sqlite is natively built-in in Node.js 22+
-  const sqliteModule = require("node:sqlite");
-  DatabaseSyncClass = sqliteModule.DatabaseSync;
-} catch (e) {
-  // Safely caught during build collection if builder is on Node < 22
+let DatabaseClass: any = null;
+
+function getDatabaseClass() {
+  if (DatabaseClass) return DatabaseClass;
+
+  // 1. Try better-sqlite3 (compatible across Node 18, 20, 22, 24 on Render, Docker, Linux, Windows)
+  try {
+    const BetterSqlite = require("better-sqlite3");
+    if (BetterSqlite) {
+      DatabaseClass = BetterSqlite;
+      return DatabaseClass;
+    }
+  } catch (e) {
+    // continue to fallback
+  }
+
+  // 2. Try native node:sqlite (built-in in Node.js 22+)
+  try {
+    const sqliteModule = require("node:sqlite");
+    if (sqliteModule && sqliteModule.DatabaseSync) {
+      DatabaseClass = sqliteModule.DatabaseSync;
+      return DatabaseClass;
+    }
+  } catch (e) {
+    // continue
+  }
+
+  throw new Error(
+    "SQLite driver not available. In Render: Go to your service -> Environment -> add NODE_VERSION=22.12.0. Or configure Supabase environment variables."
+  );
 }
 
 let dbInstance: any = null;
@@ -19,16 +41,7 @@ export function getDb(): any {
     return dbInstance;
   }
 
-  if (!DatabaseSyncClass) {
-    try {
-      const sqliteModule = require("node:sqlite");
-      DatabaseSyncClass = sqliteModule.DatabaseSync;
-    } catch (e) {
-      throw new Error(
-        "node:sqlite is only available on Node.js 22+. In Render: Go to your service -> Environment -> add NODE_VERSION=22.12.0. Or configure Supabase in your environment variables for cloud database storage."
-      );
-    }
-  }
+  const DbCtor = getDatabaseClass();
 
   // Detect serverless environment (Vercel Lambda) where root disk is read-only
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -52,7 +65,7 @@ export function getDb(): any {
     }
   }
 
-  const db = new DatabaseSyncClass(dbPath);
+  const db = new DbCtor(dbPath);
 
   // Enable WAL mode & foreign keys for high concurrency & integrity
   db.exec("PRAGMA journal_mode = WAL;");
