@@ -39,10 +39,12 @@ export default function AdminDashboardPage() {
   const loadSupabaseStatus = async () => {
     try {
       const res = await fetch("/api/admin/supabase-status");
-      const data = await res.json();
-      setSupabaseStatus(data);
+      if (res.ok) {
+        const data = await res.json();
+        setSupabaseStatus(data);
+      }
     } catch (e) {
-      console.error(e);
+      console.warn("Could not load Supabase status:", e);
     }
   };
 
@@ -51,6 +53,9 @@ export default function AdminDashboardPage() {
     setSyncMessage(null);
     try {
       const res = await fetch("/api/admin/supabase-status", { method: "POST" });
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
       const data = await res.json();
       if (data.success) {
         setSyncMessage(data.message);
@@ -74,11 +79,13 @@ export default function AdminDashboardPage() {
         fetch("/api/complaints?limit=8"),
       ]);
 
-      const [rep, batch, comp] = await Promise.all([repRes.json(), batchRes.json(), compRes.json()]);
+      const rep = repRes.ok ? await repRes.json().catch(() => null) : null;
+      const batch = batchRes.ok ? await batchRes.json().catch(() => null) : null;
+      const comp = compRes.ok ? await compRes.json().catch(() => null) : null;
 
-      if (rep.success) setReportData(rep);
-      if (batch.success) setBatchAlerts(batch.recurringAlerts || []);
-      if (comp.success) setRecentComplaints(comp.complaints || []);
+      if (rep?.success) setReportData(rep);
+      if (batch?.success) setBatchAlerts(batch.recurringAlerts || []);
+      if (comp?.success) setRecentComplaints(comp.complaints || []);
     } catch (e) {
       console.error(e);
     } finally {
