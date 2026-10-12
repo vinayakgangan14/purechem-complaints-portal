@@ -139,69 +139,71 @@ export default function AdminDashboardPage() {
           <div className="text-[11px] text-slate-400 mt-1">All recorded tickets</div>
         </div>
 
-        {/* Open Complaints */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Open Complaints</div>
-          <div className="text-3xl font-black text-blue-700 mt-2">{kpis.openComplaints || 0}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Requiring action</div>
+        {/* Pending QC Validation (Stage 1) */}
+        <div className="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm">
+          <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Pending QC (48h)</div>
+          <div className="text-3xl font-black text-amber-700 mt-2">{kpis.pendingQcValidation || 0}</div>
+          <div className="text-[11px] text-amber-600 mt-1">Rajesh Poojari Review</div>
         </div>
 
-        {/* New Today */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">New Today</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">{kpis.newToday || 0}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Logged today (WAT)</div>
-        </div>
-
-        {/* This Month */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">This Month</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">{kpis.newThisMonth || 0}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Current month tally</div>
-        </div>
-
-        {/* Under Investigation */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Under Investigation</div>
-          <div className="text-3xl font-black text-amber-700 mt-2">{kpis.underInvestigation || 0}</div>
-          <div className="text-[11px] text-slate-400 mt-1">QA Lab / RCA stage</div>
-        </div>
-
-        {/* OVERDUE COMPLAINTS (CRITICAL HIGHLIGHT) */}
+        {/* Response SLA Overdue (Critical) */}
         <div className="bg-rose-50 p-5 rounded-2xl border-2 border-rose-300 shadow-sm">
           <div className="text-[11px] font-extrabold text-rose-700 uppercase tracking-wider flex items-center gap-1">
-            <AlertOctagon className="w-3.5 h-3.5" /> Overdue Complaints
+            <AlertOctagon className="w-3.5 h-3.5" /> Response Overdue
           </div>
-          <div className="text-3xl font-black text-rose-700 mt-2">{kpis.overdueComplaints || 0}</div>
-          <div className="text-[11px] text-rose-600 font-medium mt-1">Exceeded SLA threshold</div>
+          <div className="text-3xl font-black text-rose-700 mt-2">{kpis.criticalResponseOverdue || 0}</div>
+          <div className="text-[11px] text-rose-600 font-medium mt-1">&gt;48 Hours unvalidated</div>
         </div>
 
-        {/* Resolved Complaints */}
+        {/* In Technical Investigation (Stage 2) */}
+        <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm">
+          <div className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">In Investigation</div>
+          <div className="text-3xl font-black text-blue-700 mt-2">{kpis.inInvestigation || 0}</div>
+          <div className="text-[11px] text-blue-600 mt-1">7 Working Days SLA</div>
+        </div>
+
+        {/* Resolution SLA Overdue (Critical) */}
+        <div className="bg-rose-50 p-5 rounded-2xl border-2 border-rose-300 shadow-sm">
+          <div className="text-[11px] font-extrabold text-rose-700 uppercase tracking-wider flex items-center gap-1">
+            <AlertOctagon className="w-3.5 h-3.5" /> Resolution Overdue
+          </div>
+          <div className="text-3xl font-black text-rose-700 mt-2">{kpis.criticalResolutionOverdue || 0}</div>
+          <div className="text-[11px] text-rose-600 font-medium mt-1">&gt;7 Working Days</div>
+        </div>
+
+        {/* Under Final QC Review (Stage 3) */}
+        <div className="bg-white p-5 rounded-2xl border border-purple-200 shadow-sm">
+          <div className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Final QC Review</div>
+          <div className="text-3xl font-black text-purple-700 mt-2">{kpis.underFinalReview || 0}</div>
+          <div className="text-[11px] text-purple-600 mt-1">Awaiting Rajesh Poojari</div>
+        </div>
+
+        {/* Rejected by QC */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Resolved</div>
-          <div className="text-3xl font-black text-emerald-700 mt-2">{kpis.resolvedComplaints || 0}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Awaiting final closure</div>
+          <div className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Rejected by QC</div>
+          <div className="text-3xl font-black text-red-700 mt-2">{kpis.rejectedComplaints || 0}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Retention sample OK</div>
         </div>
 
         {/* Closed Complaints */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Closed</div>
-          <div className="text-3xl font-black text-slate-700 mt-2">{kpis.closedComplaints || 0}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Confirmed finalized</div>
+          <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Officially Closed</div>
+          <div className="text-3xl font-black text-emerald-700 mt-2">{kpis.closedComplaints || 0}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Approved & finalized</div>
         </div>
 
         {/* Average Resolution Time */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Avg Resolution Time</div>
-          <div className="text-2xl font-black text-indigo-900 mt-2">{kpis.avgResolutionHours || "—"}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Across resolved tickets</div>
+          <div className="text-2xl font-black text-indigo-900 mt-2">{kpis.avgResolutionHours || "—"} hrs</div>
+          <div className="text-[11px] text-slate-400 mt-1">Across closed tickets</div>
         </div>
 
-        {/* Max Resolution Time */}
+        {/* Resolution Rate */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Max Resolution Time</div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{kpis.maxResolutionHours || "—"}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Peak turnaround</div>
+          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Closure Rate</div>
+          <div className="text-2xl font-black text-slate-900 mt-2">{kpis.resolutionRate || 0}%</div>
+          <div className="text-[11px] text-slate-400 mt-1">Completed vs total</div>
         </div>
       </div>
 

@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
-import { calculateDuration, isComplaintOverdue } from "@/lib/timer/resolution";
+import { calculateDuration, isComplaintOverdue, getComplaintSlaStatus } from "@/lib/timer/resolution";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,32 +16,30 @@ export async function GET(req: NextRequest) {
     const complaints = rows || [];
 
     const totalComplaints = complaints.length;
-    const openComplaints = complaints.filter((c: any) => c.status !== "RESOLVED" && c.status !== "CLOSED").length;
-    const resolvedComplaints = complaints.filter((c: any) => c.status === "RESOLVED").length;
-    const closedComplaints = complaints.filter((c: any) => c.status === "CLOSED").length;
-    const underInvestigation = complaints.filter((c: any) =>
-      ["INVESTIGATION", "SAMPLE REQUIRED", "UNDER TESTING", "ROOT CAUSE ANALYSIS"].includes(c.status)
-    ).length;
+    const pendingQcValidation = complaints.filter((c: any) => c.status === "PENDING_QC_VALIDATION").length;
+    const inInvestigation = complaints.filter((c: any) => c.status === "ACCEPTED").length;
+    const underFinalReview = complaints.filter((c: any) => c.status === "UNDER_FINAL_REVIEW").length;
+    const rejectedComplaints = complaints.filter((c: any) => c.status === "REJECTED").length;
+    const closedComplaints = complaints.filter((c: any) => c.status === "CLOSED" || c.status === "RESOLVED").length;
+    const openComplaints = complaints.filter((c: any) => c.status !== "RESOLVED" && c.status !== "CLOSED" && c.status !== "REJECTED").length;
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const thisMonthStr = new Date().toISOString().slice(0, 7);
     const newToday = complaints.filter((c: any) => (c.created_at || "").startsWith(todayStr)).length;
     const newThisMonth = complaints.filter((c: any) => (c.created_at || "").startsWith(thisMonthStr)).length;
 
-    let overdueCount = 0;
+    let criticalResponseOverdue = 0;
+    let criticalResolutionOverdue = 0;
     const resolvedDurations: number[] = [];
 
     complaints.forEach((c: any) => {
-      const isOverdue = isComplaintOverdue(
-        c.complaint_open_time,
-        c.target_resolution_hours || 72,
-        c.status,
-        c.resolved_at
-      );
-      if (isOverdue && c.status !== "RESOLVED" && c.status !== "CLOSED") {
-        overdueCount++;
+      const sla = getComplaintSlaStatus(c);
+      if (sla.isResponseOverdue && c.status === "PENDING_QC_VALIDATION") {
+        criticalResponseOverdue++;
       }
-
+      if (sla.isResolutionOverdue && c.status === "ACCEPTED") {
+        criticalResolutionOverdue++;
+      }
       if (c.total_resolution_minutes) {
         resolvedDurations.push(c.total_resolution_minutes);
       }
@@ -116,16 +114,20 @@ export async function GET(req: NextRequest) {
       kpis: {
         totalComplaints,
         openComplaints,
-        resolvedComplaints,
+        pendingQcValidation,
+        inInvestigation,
+        underFinalReview,
+        rejectedComplaints,
         closedComplaints,
-        underInvestigation,
+        criticalResponseOverdue,
+        criticalResolutionOverdue,
+        overdueCount: criticalResponseOverdue + criticalResolutionOverdue,
         newToday,
         newThisMonth,
-        overdueCount,
         avgResolutionHours: avgHours,
         maxResolutionHours: maxHours,
         minResolutionHours: minHours,
-        resolutionRate: totalComplaints > 0 ? Math.round(((resolvedComplaints + closedComplaints) / totalComplaints) * 100) : 0,
+        resolutionRate: totalComplaints > 0 ? Math.round(((closedComplaints) / totalComplaints) * 100) : 0,
       },
       productStats,
       categoryStats,

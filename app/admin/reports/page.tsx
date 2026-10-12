@@ -75,38 +75,38 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      {/* RESOLUTION PERFORMANCE SUMMARY CARDS (Section 21) */}
+      {/* RESOLUTION PERFORMANCE SUMMARY CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-500 uppercase">Average Resolution Time</div>
-          <div className="text-2xl sm:text-3xl font-black text-purechem-navy mt-2">
-            {kpis.avgResolutionHours || "—"}
+          <div className="text-[11px] font-bold text-amber-700 uppercase">Pending QC Validation (48h)</div>
+          <div className="text-2xl sm:text-3xl font-black text-amber-800 mt-2">
+            {kpis.pendingQcValidation || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">From ticket open to resolution</div>
+          <div className="text-[11px] text-slate-400 mt-1">Rajesh Poojari Review</div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-emerald-600 uppercase">Fastest Resolution (Min)</div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-700 mt-2">
-            {kpis.minResolutionHours || "—"}
+          <div className="text-[11px] font-bold text-blue-700 uppercase">In Investigation (7d SLA)</div>
+          <div className="text-2xl sm:text-3xl font-black text-blue-900 mt-2">
+            {kpis.inInvestigation || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Best response turnaround</div>
+          <div className="text-[11px] text-slate-400 mt-1">Assigned Department Team</div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-slate-600 uppercase">Peak Resolution (Max)</div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-            {kpis.maxResolutionHours || "—"}
+          <div className="text-[11px] font-bold text-indigo-700 uppercase">Average Resolution Time</div>
+          <div className="text-2xl sm:text-3xl font-black text-indigo-900 mt-2">
+            {kpis.avgResolutionHours || "—"} hrs
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Complex lab investigations</div>
+          <div className="text-[11px] text-slate-400 mt-1">From ticket open to closure</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-bold text-rose-600 uppercase">SLA Target Breach (Overdue)</div>
+        <div className="bg-white p-5 rounded-2xl border border-rose-200 shadow-sm">
+          <div className="text-[11px] font-bold text-rose-600 uppercase">SLA Breaches (Overdue)</div>
           <div className="text-2xl sm:text-3xl font-black text-rose-700 mt-2">
-            {kpis.overdueComplaints || 0}
+            {kpis.overdueCount || kpis.overdueComplaints || 0}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Complaints exceeding SLA</div>
+          <div className="text-[11px] text-slate-400 mt-1">48h or 7-day SLA exceeded</div>
         </div>
       </div>
 

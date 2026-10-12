@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
-import { calculateDuration, isComplaintOverdue, SLA_TARGETS } from "@/lib/timer/resolution";
+import { calculateDuration, getComplaintSlaStatus, SLA_TARGETS } from "@/lib/timer/resolution";
 import { sendNotificationEmail } from "@/lib/email/dispatcher";
 
 export async function GET(req: NextRequest) {
@@ -19,15 +19,19 @@ export async function GET(req: NextRequest) {
     const customerPhone = searchParams.get("customer_phone") || "";
     const overdueOnly = searchParams.get("overdue") === "true";
     const batchNumber = searchParams.get("batch") || "";
+    const department = searchParams.get("department") || "";
+    const assignedTo = searchParams.get("assigned_to") || "";
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
     const offset = (page - 1) * limit;
 
     let query = supabase.from("complaints").select("*", { count: "exact" });
 
-    if (status) query = query.eq("status", status);
-    if (category) query = query.eq("product_category", category);
-    if (priority) query = query.or(`customer_priority.eq.${priority},admin_priority.eq.${priority}`);
+    if (status && status !== "ALL") query = query.eq("status", status);
+    if (category && category !== "ALL") query = query.eq("product_category", category);
+    if (department && department !== "ALL") query = query.eq("assigned_department", department);
+    if (assignedTo && assignedTo !== "ALL") query = query.eq("assigned_to", assignedTo);
+    if (priority && priority !== "ALL") query = query.or(`customer_priority.eq.${priority},admin_priority.eq.${priority}`);
     if (product) query = query.ilike("product_name", `%${product}%`);
     if (batchNumber) query = query.ilike("batch_number", `%${batchNumber}%`);
 
@@ -52,22 +56,20 @@ export async function GET(req: NextRequest) {
     }
 
     const complaints = (rows || []).map((c: any) => {
-      const isResolvedOrClosed = c.status === "RESOLVED" || c.status === "CLOSED";
+      const isResolvedOrClosed = c.status === "RESOLVED" || c.status === "CLOSED" || c.status === "REJECTED";
       const duration = isResolvedOrClosed
-        ? calculateDuration(c.complaint_open_time, c.resolved_at || c.closed_at || c.updated_at)
-        : calculateDuration(c.complaint_open_time, new Date());
+        ? calculateDuration(c.acknowledged_at || c.complaint_open_time, c.resolved_at || c.closed_at || c.updated_at)
+        : calculateDuration(c.acknowledged_at || c.complaint_open_time, new Date());
 
-      const overdue = isComplaintOverdue(
-        c.complaint_open_time,
-        c.target_resolution_hours || 72,
-        c.status,
-        c.resolved_at
-      );
+      const sla = getComplaintSlaStatus(c);
 
       return {
         ...c,
         live_duration: duration,
-        is_overdue: overdue ? 1 : 0,
+        is_overdue: sla.isCritical ? 1 : 0,
+        is_response_overdue: sla.isResponseOverdue ? 1 : 0,
+        is_resolution_overdue: sla.isResolutionOverdue ? 1 : 0,
+        sla_status: sla,
       };
     });
 
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest) {
       customer_email,
       customer_phone,
       customer_type,
+      sales_manager_name,
       raised_by_role,
       raised_by_name,
       product_name,
@@ -139,7 +142,9 @@ export async function POST(req: NextRequest) {
     const nowIso = now.toISOString();
 
     const priority = customer_priority === "Urgent" ? "Urgent" : "Normal";
-    const targetHours = priority === "Urgent" ? SLA_TARGETS.Urgent : SLA_TARGETS.Normal;
+    const targetHours = SLA_TARGETS.Normal; // 7 working days (~168 hours)
+
+    const salesLogger = sales_manager_name || raised_by_name || "Sales Manager";
 
     const newRecord = {
       id: complaintId,
@@ -148,11 +153,11 @@ export async function POST(req: NextRequest) {
       customer_company: customer_company ? customer_company.trim() : "",
       customer_email: customer_email.trim(),
       customer_phone: customer_phone.trim(),
-      customer_type: customer_type || "Customer",
-      raised_by_role: raised_by_role || "Customer",
-      raised_by_name: raised_by_name || customer_name.trim(),
+      customer_type: customer_type || "Distributor",
+      raised_by_role: "Sales",
+      raised_by_name: salesLogger,
       product_name: product_name.trim(),
-      product_category: product_category || "Adhesives",
+      product_category: product_category || "CCD-Construction Chemical Division",
       product_code: product_code || "",
       batch_number: batch_number ? batch_number.trim() : "",
       manufacturing_date: manufacturing_date || null,
@@ -165,7 +170,9 @@ export async function POST(req: NextRequest) {
       customer_priority: priority,
       admin_priority: "Medium",
       description: description.trim(),
-      status: "OPEN",
+      status: "PENDING_QC_VALIDATION", // Initial state waiting for Rajesh Poojari
+      assigned_to: "Rajesh Poojari",
+      assigned_department: "Quality",
       complaint_open_time: nowIso,
       target_resolution_hours: targetHours,
       is_overdue: 0,
@@ -178,16 +185,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: insErr.message }, { status: 500 });
     }
 
-    const creatorLabel = raised_by_role === "Sales" ? `Sales Representative (${raised_by_name || "Sales"})` : customer_name;
     await supabase.from("complaint_timeline").insert({
       complaint_id: complaintId,
-      action: "Complaint Registered",
+      action: "Complaint Registered — Submitted to Rajesh Poojari (QC Manager)",
       old_status: null,
-      new_status: "OPEN",
-      comment: `Complaint ${complaintNumber} registered into Purechem Quality System.`,
+      new_status: "PENDING_QC_VALIDATION",
+      comment: `Complaint ${complaintNumber} registered by Sales Manager (${salesLogger}) and submitted to Rajesh Poojari (QC Manager) for validation.`,
       is_internal_only: false,
-      performed_by: creatorLabel,
-      performed_by_role: raised_by_role || "Customer",
+      performed_by: salesLogger,
+      performed_by_role: "Sales",
       created_at: nowIso,
     });
 
@@ -202,14 +208,14 @@ export async function POST(req: NextRequest) {
         companyName: customer_company || "",
         productName: product_name.trim(),
         batchNumber: batch_number || "",
-        status: "OPEN",
+        status: "PENDING_QC_VALIDATION",
         complaintDate: nowIso,
       },
     }).catch((e) => console.warn("Email warning:", e.message));
 
     return NextResponse.json({
       success: true,
-      message: "Complaint successfully registered",
+      message: "Complaint successfully registered and submitted to Rajesh Poojari",
       complaint: newRecord,
       complaint_number: complaintNumber,
     });
