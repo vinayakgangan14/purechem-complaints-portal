@@ -11,6 +11,7 @@ import {
   Settings,
   Menu,
   X,
+  FlaskConical,
   ShieldCheck,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { label: "Dashboard & Analytics", href: "/admin", icon: LayoutDashboard },
     { label: "Complaint Resolution Desk", href: "/admin/resolve", icon: ClipboardList },
+    { label: "Daily QC Batch Register", href: "/admin/qc-batches", icon: FlaskConical },
     { label: "Raise New Complaint", href: "/complaint/new", icon: PhoneForwarded },
   ];
 

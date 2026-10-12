@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const batch = searchParams.get("batch");
     const search = searchParams.get("search");
     const status = searchParams.get("status");
+    const category = searchParams.get("category");
 
     let query = supabase.from("qc_batch_reports").select("*");
 
@@ -19,6 +20,10 @@ export async function GET(req: NextRequest) {
 
     if (status && status !== "ALL") {
       query = query.eq("qc_status", status);
+    }
+
+    if (category && category !== "ALL") {
+      query = query.eq("product_category", category);
     }
 
     if (search) {
@@ -47,16 +52,26 @@ export async function POST(req: NextRequest) {
 
     const {
       product_name,
+      product_code,
+      product_category,
       batch_number,
+      manufacturing_date,
+      expiry_date,
+      testing_date,
+      tested_by,
+      appearance,
+      appearance_notes,
+      viscosity_status,
+      viscosity_value,
+      solid_content_status,
+      solid_content_value,
+      bond_strength_status,
+      bond_strength_value,
+      qc_status,
+      remarks,
       viscosity,
       colour,
       solids,
-      qc_status,
-      manufacturing_date,
-      expiry_date,
-      tested_by,
-      testing_date,
-      remarks,
     } = body;
 
     if (!product_name || !product_name.trim()) {
@@ -70,16 +85,31 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     const testDate = testing_date || now.split("T")[0];
 
+    const appStatus = appearance || "Passed";
+    const viscStatus = viscosity_status || "Passed";
+    const solidStatus = solid_content_status || "Passed";
+    const bondStatus = bond_strength_status || "Passed";
+
     const payload = {
       product_name: product_name.trim(),
+      product_code: product_code || "",
+      product_category: product_category || "",
       batch_number: cleanBatch,
-      viscosity: viscosity || "Standard",
-      colour: colour || "Standard",
-      solids: solids || "Standard",
-      qc_status: qc_status || "Passed",
+      appearance: appStatus,
+      appearance_notes: appearance_notes || colour || "",
+      viscosity_status: viscStatus,
+      viscosity_value: viscosity_value || viscosity || "",
+      solid_content_status: solidStatus,
+      solid_content_value: solid_content_value || solids || "",
+      bond_strength_status: bondStatus,
+      bond_strength_value: bond_strength_value || "",
+      viscosity: viscosity_value || viscosity || `${viscStatus}`,
+      colour: appearance_notes || colour || `${appStatus}`,
+      solids: solid_content_value || solids || `${solidStatus}`,
+      qc_status: qc_status || (appStatus === "Passed" && viscStatus === "Passed" && solidStatus === "Passed" && bondStatus === "Passed" ? "Passed" : "Failed"),
       manufacturing_date: manufacturing_date || null,
       expiry_date: expiry_date || null,
-      tested_by: tested_by || "Dr. Chioma Okonkwo (QC)",
+      tested_by: tested_by || "Rajesh Poojari (QC)",
       testing_date: testDate,
       remarks: remarks || "",
       created_at: now,
